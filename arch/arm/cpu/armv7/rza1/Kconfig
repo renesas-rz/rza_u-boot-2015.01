@@ -1,0 +1,16 @@
+if RZA1
+
+choice
+	prompt "Renesas RZ/A1H ARM SoCs board select"
+
+config TARGET_RSKRZA1
+	bool "RSK-RZA/1 board"
+
+endchoice
+
+config SYS_SOC
+	default "rza1"
+
+source "board/renesas/rskrza1/Kconfig"
+
+endif

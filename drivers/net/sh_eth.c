@@ -405,10 +405,10 @@ static int sh_eth_config(struct sh_eth_dev *eth, bd_t *bd)
 	sh_eth_write(eth, val, MALR);
 
 	sh_eth_write(eth, RFLR_RFL_MIN, RFLR);
-#if defined(SH_ETH_TYPE_GETHER)
+#if defined(SH_ETH_TYPE_GETHER) || defined(SH_ETH_TYPE_RZ)
+#if !defined(CONFIG_CPU_RZA1)
 	sh_eth_write(eth, 0, PIPR);
 #endif
-#if defined(SH_ETH_TYPE_GETHER) || defined(SH_ETH_TYPE_RZ)
 	sh_eth_write(eth, APR_AP, APR);
 	sh_eth_write(eth, MPR_MP, MPR);
 	sh_eth_write(eth, TPAUSER_TPAUSE, TPAUSER);
@@ -455,7 +455,7 @@ static int sh_eth_config(struct sh_eth_dev *eth, bd_t *bd)
 		sh_eth_write(eth, 0, RTRATE);
 #endif
 	}
-#if defined(SH_ETH_TYPE_GETHER)
+#if defined(SH_ETH_TYPE_GETHER) && !defined(CONFIG_CPU_RZA1)
 	else if (phy->speed == 1000) {
 		printf(SHETHER_NAME ": 1000Base/");
 		sh_eth_write(eth, GECMR_1000B, GECMR);
@@ -476,6 +476,22 @@ static int sh_eth_config(struct sh_eth_dev *eth, bd_t *bd)
 
 err_phy_cfg:
 	return ret;
+}
+
+static int sh_eth_write_hwaddr(struct eth_device *dev)
+{
+	u32 val;
+	struct sh_eth_dev *eth = dev->priv;
+	
+	/* Set Mac address */
+	val = dev->enetaddr[0] << 24 | dev->enetaddr[1] << 16 |
+	    dev->enetaddr[2] << 8 | dev->enetaddr[3];
+	sh_eth_write(eth, val, MAHR);
+
+	val = dev->enetaddr[4] << 8 | dev->enetaddr[5];
+	sh_eth_write(eth, val, MALR);
+	
+	return 0;
 }
 
 static void sh_eth_start(struct sh_eth_dev *eth)
@@ -558,6 +574,7 @@ int sh_eth_initialize(bd_t *bd)
 	dev->halt = sh_eth_halt;
 	dev->send = sh_eth_send;
 	dev->recv = sh_eth_recv;
+	dev->write_hwaddr = sh_eth_write_hwaddr;
 	eth->port_info[eth->port].dev = dev;
 
 	sprintf(dev->name, SHETHER_NAME);

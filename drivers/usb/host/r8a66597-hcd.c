@@ -1,6 +1,7 @@
 /*
  * R8A66597 HCD (Host Controller Driver) for u-boot
  *
+ * Copyright (C) 2013-2014 Renesas Solutions Corp.
  * Copyright (C) 2008  Yoshihiro Shimoda <shimoda.yoshihiro@renesas.com>
  *
  * This program is free software; you can redistribute it and/or modify
@@ -68,6 +69,8 @@ static void set_devadd(struct r8a66597 *r8a66597, u8 r8a66597_address,
 	r8a66597_write(r8a66597, val, devadd_reg);
 }
 
+#ifndef CONFIG_CPU_RZA1
+
 static int r8a66597_clock_enable(struct r8a66597 *r8a66597)
 {
 	u16 tmp;
@@ -121,6 +124,47 @@ static void r8a66597_clock_disable(struct r8a66597 *r8a66597)
 #endif
 }
 
+#else
+
+static int r8a66597_clock_enable(struct r8a66597 *r8a66597)
+{
+	u16 tmp;
+	int i = 0;
+
+	do {
+		r8a66597_write(r8a66597, USBE, SYSCFG0);
+		tmp = r8a66597_read(r8a66597, SYSCFG0);
+		if (i++ > 1000) {
+			printf("r8a66597: reg access fail.\n");
+			return -1;
+		}
+	} while ((tmp & USBE) != USBE);
+	r8a66597_bclr(r8a66597, USBE, SYSCFG0);
+	r8a66597_mdfy(r8a66597, CONFIG_R8A66597_XTAL, XTAL, SYSCFG0);
+	mdelay(1);
+/*	r8a66597_bset(r8a66597, UPLLE, SYSCFG0);*/
+	tmp = *(volatile u16 *)(0xE8010000);
+	*(volatile u16 *)(0xE8010000) = tmp | UPLLE;
+	mdelay(1);
+	r8a66597_bset(r8a66597, SUSPM, SUSPMODE0);
+	return 0;
+}
+
+static void r8a66597_clock_disable(struct r8a66597 *r8a66597)
+{
+	u16 tmp;
+
+	r8a66597_bclr(r8a66597, SUSPM, SUSPMODE0);
+/*	r8a66597_bclr(r8a66597, UPLLE, SYSCFG0);*/
+	tmp = *(volatile u16 *)(0xE8010000);
+	*(volatile u16 *)(0xE8010000) = tmp & ~UPLLE;
+	mdelay(1);
+	r8a66597_bclr(r8a66597, USBE, SYSCFG0);
+	mdelay(1);
+}
+
+#endif
+
 static void r8a66597_enable_port(struct r8a66597 *r8a66597, int port)
 {
 	u16 val;
@@ -129,7 +173,9 @@ static void r8a66597_enable_port(struct r8a66597 *r8a66597, int port)
 	r8a66597_bset(r8a66597, val, get_syscfg_reg(port));
 	r8a66597_bset(r8a66597, HSE, get_syscfg_reg(port));
 
+#ifndef CONFIG_CPU_RZA1
 	r8a66597_write(r8a66597, BURST | CPU_ADR_RD_WR, get_dmacfg_reg(port));
+#endif
 }
 
 static void r8a66597_disable_port(struct r8a66597 *r8a66597, int port)
@@ -159,7 +205,9 @@ static int enable_controller(struct r8a66597 *r8a66597)
 	if (ret < 0)
 		return ret;
 
+#ifndef CONFIG_CPU_RZA1
 	r8a66597_bset(r8a66597, CONFIG_R8A66597_LDRV & LDRV, PINCFG);
+#endif
 	r8a66597_bset(r8a66597, USBE, SYSCFG0);
 
 	r8a66597_bset(r8a66597, INTL, SOFCFG);
@@ -277,11 +325,29 @@ static int send_setup_packet(struct r8a66597 *r8a66597, struct usb_device *dev,
 	unsigned long setup_addr = USBREQ;
 	u16 intsts1;
 	int timeout = 3000;
+#ifdef CONFIG_CPU_RZA1
+	u16 dcpctr;
+	int timeout2 = 10000;
+#endif
 	u16 devsel = setup->request == USB_REQ_SET_ADDRESS ? 0 : dev->devnum;
 
 	r8a66597_write(r8a66597, make_devsel(devsel) |
 				 (8 << dev->maxpacketsize), DCPMAXP);
 	r8a66597_write(r8a66597, ~(SIGN | SACK), INTSTS1);
+
+#ifdef CONFIG_CPU_RZA1
+	dcpctr = r8a66597_read(r8a66597, DCPCTR);
+	if((dcpctr & PID)==PID_BUF){
+		timeout2 = 10000;
+		while (!(dcpctr & BSTS)){
+			dcpctr = r8a66597_read(r8a66597, DCPCTR);
+			if(timeout2-- < 0){
+				printf("DCPCTR clear timeout!\n");
+				break;
+			}
+		}
+	}
+#endif
 
 	for (i = 0; i < 4; i++) {
 		r8a66597_write(r8a66597, le16_to_cpu(p[i]), setup_addr);

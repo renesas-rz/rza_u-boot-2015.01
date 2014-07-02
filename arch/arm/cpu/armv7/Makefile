@@ -53,6 +53,7 @@ obj-$(CONFIG_MX6) += mx6/
 obj-$(CONFIG_OMAP34XX) += omap3/
 obj-$(CONFIG_OMAP44XX) += omap4/
 obj-$(CONFIG_OMAP54XX) += omap5/
+obj-$(CONFIG_RZA1) += rza1/
 obj-$(CONFIG_RMOBILE) += rmobile/
 obj-$(CONFIG_ARCH_S5PC1XX) += s5pc1xx/
 obj-$(CONFIG_SOCFPGA) += socfpga/

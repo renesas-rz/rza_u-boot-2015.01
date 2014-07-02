@@ -1,6 +1,7 @@
 #
 # (C) Copyright 2000-2007
 # Wolfgang Denk, DENX Software Engineering, wd@denx.de.
+# Copyright (C) 2013 Renesas Solutions Corp.
 #
 # SPDX-License-Identifier:	GPL-2.0+
 #
@@ -38,6 +39,7 @@ obj-$(CONFIG_MXC_SPI) += mxc_spi.o
 obj-$(CONFIG_MXS_SPI) += mxs_spi.o
 obj-$(CONFIG_OC_TINY_SPI) += oc_tiny_spi.o
 obj-$(CONFIG_OMAP3_SPI) += omap3_spi.o
+obj-$(CONFIG_RZ_SPI) += rz_spi.o
 obj-$(CONFIG_SANDBOX_SPI) += sandbox_spi.o
 obj-$(CONFIG_SH_SPI) += sh_spi.o
 obj-$(CONFIG_SH_QSPI) += sh_qspi.o

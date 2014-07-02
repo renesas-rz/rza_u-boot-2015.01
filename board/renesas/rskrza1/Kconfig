@@ -1,0 +1,12 @@
+if TARGET_RSKRZA1
+
+config SYS_BOARD
+	default "rskrza1"
+
+config SYS_VENDOR
+	default "renesas"
+
+config SYS_CONFIG_NAME
+	default "rskrza1"
+
+endif

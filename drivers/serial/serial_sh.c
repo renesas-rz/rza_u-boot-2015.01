@@ -69,6 +69,9 @@ static int sh_serial_init(void)
 	sci_out(&sh_sci, SCFCR, SCFCR_RFRST|SCFCR_TFRST);
 	sci_in(&sh_sci, SCFCR);
 	sci_out(&sh_sci, SCFCR, 0);
+#ifdef CONFIG_CPU_RZA1
+	sci_out(&sh_sci, SCSPTR, 0x0053);
+#endif
 
 	serial_setbrg();
 	return 0;

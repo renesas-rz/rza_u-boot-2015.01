@@ -682,6 +682,10 @@ config RMOBILE
 	bool "Renesas ARM SoCs"
 	select CPU_V7
 
+config RZA1
+	bool "Renesas RZ/A1H ARM SoCs"
+	select CPU_V7
+
 config TARGET_CM_FX6
 	bool "Support cm_fx6"
 	select CPU_V7
@@ -826,6 +830,8 @@ source "arch/arm/cpu/armv7/omap5/Kconfig"
 source "arch/arm/cpu/arm926ejs/orion5x/Kconfig"
 
 source "arch/arm/cpu/armv7/rmobile/Kconfig"
+
+source "arch/arm/cpu/armv7/rza1/Kconfig"
 
 source "arch/arm/cpu/armv7/s5pc1xx/Kconfig"
 

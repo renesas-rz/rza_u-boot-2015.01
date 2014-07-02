@@ -1,6 +1,7 @@
 #
 # (C) Copyright 2001-2006
 # Wolfgang Denk, DENX Software Engineering, wd@denx.de.
+# Copyright (C) 2013 Renesas Solutions Corp.
 #
 # SPDX-License-Identifier:	GPL-2.0+
 #
@@ -50,3 +51,4 @@ obj-$(CONFIG_RTC_RV3029) += rv3029.o
 obj-$(CONFIG_RTC_RX8025) += rx8025.o
 obj-$(CONFIG_RTC_S3C24X0) += s3c24x0_rtc.o
 obj-$(CONFIG_RTC_X1205) += x1205.o
+obj-$(CONFIG_RTC_RZA1) += rza1_rtc.o

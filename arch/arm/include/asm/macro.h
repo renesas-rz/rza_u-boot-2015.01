@@ -28,7 +28,8 @@
 
 .macro	write16, addr, data
 	ldr	r4, =\addr
-	ldrh	r5, =\data
+	ldr	r5, =\data /* avoid this error. "invalid literal constant:
+			      pool needs to be closer" */
 	strh	r5, [r4]
 .endm
 
