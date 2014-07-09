@@ -250,6 +250,11 @@ lowlevel_init:
 	write32 CS1WCR, CS1WCR_D
 	write32 CS1BCR, CS1BCR_D
 
+	/* Enable all internal RAM */
+	write8 SYSCR1, 0xFF
+	write8 SYSCR2, 0xFF
+	write8 SYSCR3, 0xFF
+
 	/* Configure SDRAM (CS2, CS3) */
 	write32	CS2BCR, CS2BCR_D
 	write32	CS2WCR, CS2WCR_D

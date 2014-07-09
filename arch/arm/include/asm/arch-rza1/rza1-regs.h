@@ -39,7 +39,7 @@
 #define OSTM1TT  (RZA1_OST_BASE + 0x418)
 #define OSTM1CTL (RZA1_OST_BASE + 0x420)
 
-/* Standby controller registers */
+/* Standby controller registers (chapter 55) */
 #define STBCR1 (RZA1_STBCR_BASE + 0x00)
 #define STBCR2 (RZA1_STBCR_BASE + 0x04)
 #define STBCR3 (RZA1_STBCR_BASE + 0x400)
@@ -52,6 +52,7 @@
 #define STBCR10 (RZA1_STBCR_BASE + 0x41c)
 #define STBCR11 (RZA1_STBCR_BASE + 0x420)
 #define STBCR12 (RZA1_STBCR_BASE + 0x424)
+#define STBCR13 (RZA1_STBCR_BASE + 0x450)
 
 /* Port0 Control register */
 #define JPPR0   (RZA1_PCTR_BASE + 0x000)
@@ -188,5 +189,26 @@
 #define SDCR   (RZA1_SDRAM_BASE + 0x4c)
 #define RTCOR  (RZA1_SDRAM_BASE + 0x58)
 #define RTCSR  (RZA1_SDRAM_BASE + 0x50)
+
+/* Power-Down Registers (Chapter 55) */
+#define SWRSTCR1 0xFCFE0460	/* Software reset control register 1 */
+#define SWRSTCR2 0xFCFE0464	/* Software reset control register 2 */
+#define SWRSTCR3 0xFCFE0468	/* Software reset control register 3 */
+#define SYSCR1 0xFCFE0400	/* System control register 1 */
+#define SYSCR2 0xFCFE0404	/* System control register 2 */
+#define SYSCR3 0xFCFE0408	/* System control register 3 */
+#define CPUSTS 0xFCFE0018	/* CPU status register */
+#define STBREQ1 0xFCFE0030	/* Standby request register 1 */
+#define STBREQ2 0xFCFE0034	/* Standby request register 2 */
+#define STBACK1 0xFCFE0040	/* Standby acknowledge register 1 */
+#define STBACK2 0xFCFE0044	/* Standby acknowledge register 2 */
+#define RRAMKP 0xFCFF1800	/* On-chip data-retention RAM area setting register */
+#define DSCTR 0xFCFF1802	/* Deep standby control register */
+#define DSSSR 0xFCFF1804	/* Deep standby cancel source select register */
+#define DSESR 0xFCFF1806	/* Deep standby cancel edge select register */
+#define DSFR 0xFCFF1808	/* Deep standby cancel source flag register */
+#define XTALCTR 0xFCFF1810	/* XTAL crystal oscillator gain control register */
+
+
 
 #endif				/* _RZA1_REGS_H */
