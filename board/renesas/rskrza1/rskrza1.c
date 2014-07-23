@@ -14,6 +14,8 @@
 #include <asm/io.h>
 #include <asm/processor.h>
 #include <i2c.h>
+#include <rtc.h>
+#include <asm/arch/rza1-regs.h>
 
 DECLARE_GLOBAL_DATA_PTR;
 
