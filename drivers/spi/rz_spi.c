@@ -40,7 +40,7 @@ static int qspi_set_config_register(struct stRzSpi*);
 static u32 qspi_calc_spbcr(struct stRzSpi* pstRzSpi);
 static int qspi_set_ope_mode(struct stRzSpi*,int);
 static int qspi_wait_for_poll(struct stRzSpi*);
-static int qspi_is_nagate_ssl(struct stRzSpi*);
+static int qspi_is_ssl_negated(struct stRzSpi*);
 static void qspi_set_busio(struct stRzSpi*,u8);
 static int qspi_send_cmd(struct stRzSpi*,const u8*,unsigned int,int);
 static int qspi_send_data(struct stRzSpi*,const u8*,unsigned int);
@@ -277,7 +277,7 @@ static int qspi_set_config_register(struct stRzSpi* pstRzSpi)
 #endif // __SF_TRACE__
 
 	/* check negate */
-	if (!qspi_is_nagate_ssl(pstRzSpi)){
+	if (!qspi_is_ssl_negated(pstRzSpi)){
 		printf("%s: I/O error\n", __func__);
 		return 0;
 	}
@@ -365,7 +365,7 @@ static int qspi_set_ope_mode(struct stRzSpi* pstRzSpi, int mode)
 		return 0;
 	}
 
-	if(!qspi_is_nagate_ssl(pstRzSpi)){
+	if(!qspi_is_ssl_negated(pstRzSpi)){
 		printf("%s: I/O error\n", __func__);
 		return 0;
 	}
@@ -459,7 +459,7 @@ static int qspi_wait_for_poll(struct stRzSpi* pstRzSpi)
 /**
  *
  */
-static int qspi_is_nagate_ssl(struct stRzSpi* pstRzSpi)
+static int qspi_is_ssl_negated(struct stRzSpi* pstRzSpi)
 {
 #ifdef	__SF_TRACE__
 	debug("call %s:\n", __func__);
