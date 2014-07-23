@@ -111,3 +111,58 @@ void reset_cpu(ulong addr)
 void led_set_state(unsigned short value)
 {
 }
+
+/* XIP Kernel boot */
+int do_bootx(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
+{
+	ulong machid = MACH_TYPE_RSKRZA1;
+	void (*kernel_entry)(int zero, int arch, uint params);
+	ulong r2;
+	ulong img_addr;
+	char *endp;
+
+	/* need at least two arguments */
+	if (argc < 2)
+		goto usage;
+/*
+	if (argc < 2) {
+		if (strcmp(argv[3], "xxx") == 0) {
+			; ; ;
+		}
+	}
+*/
+	img_addr = simple_strtoul(argv[1], &endp, 16);
+	kernel_entry = (void (*)(int, int, uint))img_addr;
+
+#ifdef CONFIG_USB_DEVICE
+	udc_disconnect();
+#endif
+	cleanup_before_linux();
+
+	r2 = simple_strtoul(argv[2], NULL, 16);
+#if 0
+#ifdef CONFIG_OF_LIBFDT
+	if (images->ft_len)
+		r2 = (unsigned long)images->ft_addr;
+	else
+#endif
+		r2 = gd->bd->bi_boot_params;
+#endif
+	printf("Booting Linux...\n");
+
+	kernel_entry(0, machid, r2);
+
+	return 0;
+
+usage:
+	return CMD_RET_USAGE;
+}
+static char bootx_help_text[] =
+	"x_addr dt_addr\n    - boot XIP kernel in Flash\n"
+	"\t x_addr: Address of XIP kernel in Flash\n"
+	"\tdt_addr: Address of Device Tree blob image";
+U_BOOT_CMD(
+	bootx,	CONFIG_SYS_MAXARGS,	1,	do_bootx,
+	"boot XIP kernel in Flash", bootx_help_text
+);
+
