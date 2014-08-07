@@ -25,7 +25,9 @@
 #define ADDR_TO_PHY(addr)	((int)(addr) & ~0xe0000000)
 #endif
 #elif defined(CONFIG_ARM)
+#undef inl
 #define inl		readl
+#undef outl
 #define outl	writel
 #define ADDR_TO_PHY(addr)	((int)(addr))
 #define ADDR_TO_P2(addr)	(addr)
