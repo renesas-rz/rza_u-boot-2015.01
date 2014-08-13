@@ -33,6 +33,9 @@ struct stRzSpi{
 
 	u32			u32DataBitw;	// data_bitw
 	u32			u32DummyCycle;	// dmy_cycle
+
+	u8			data_read_dual;	// single or dual chips in data read mode
+	u8			this_cmd;	// what is the current SPI command
 };
 
 /* QSPI MODE */
@@ -190,15 +193,12 @@ struct stRzSpi{
 #define	BITW_2BIT		(1)
 #define	BITW_4BIT		(2)
 
-#ifdef	FLASHCHIP_DUAL
-	#define	SPIDE_16BITS	(0x8)
-	#define	SPIDE_32BITS	(0xc)
-	#define	SPIDE_64BITS	(0xf)
-#else
-	#define	SPIDE_8BITS	(0x8)
-	#define	SPIDE_16BITS	(0xc)
-	#define	SPIDE_32BITS	(0xf)
-#endif
+#define	SPIDE_16BITS_DUAL	(0x8)
+#define	SPIDE_32BITS_DUAL	(0xc)
+#define	SPIDE_64BITS_DUAL	(0xf)
+#define	SPIDE_8BITS	(0x8)
+#define	SPIDE_16BITS	(0xc)
+#define	SPIDE_32BITS	(0xf)
 
 #define	OPDE_3			(0x8)
 #define	OPDE_3_2		(0xc)
