@@ -100,6 +100,17 @@ int board_late_init(void)
 	if (is_valid_ether_addr(mac))
 		eth_setenv_enetaddr("ethaddr", mac);
 
+#if !defined(CONFIG_BOOT_MODE0)
+	printf(	"\t\t      SPI Flash Memory Map\n"
+		"\t\t------------------------------------\n"
+		"\t\t         Start      Size     SPI\n");
+	printf(	"\t\tu-boot:  0x%08X 0x%06X 0\n", 0,CONFIG_ENV_OFFSET);
+	printf(	"\t\t   env:  0x%08X 0x%06X 0\n", CONFIG_ENV_OFFSET, CONFIG_ENV_SIZE);
+	printf(	"\t\t    DT:  0x%08X 0x%06X 0\n", CONFIG_ENV_OFFSET+CONFIG_ENV_SIZE,CONFIG_ENV_SECT_SIZE);
+	printf(	"\t\tKernel:  0x%08X 0x%06X 0+1 (size*=2)\n",0x100000, 0x280000);
+	printf(	"\t\trootfs:  0x%08X 0x%06X 0+1 (size*=2)\n",0x4000000, 0x4000000-0x4000000);
+#endif
+
 	return 0;
 }
 
