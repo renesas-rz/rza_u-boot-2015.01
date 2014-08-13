@@ -12,7 +12,9 @@
 #ifndef __RSKRZA1_H
 #define __RSKRZA1_H
 
-#undef DEBUG
+//#define DEBUG
+//#undef DEBUG
+
 #define CONFIG_ARMV7		1	/* This is an ARM V7 CPU core */
 #define CONFIG_CPU_RZA1	1
 #define CONFIG_BOARD_LATE_INIT	1
@@ -52,6 +54,8 @@
 
 #define CONFIG_BAUDRATE		115200
 #define CONFIG_BOOTARGS		"console=ttySC2,115200"
+#define CONFIG_IPADDR		192.168.0.55
+#define CONFIG_SERVERIP		192.168.0.1
 #define CONFIG_BOOTDELAY	3
 #define CONFIG_SYS_BAUDRATE_TABLE	{ CONFIG_BAUDRATE }
 
@@ -111,6 +115,7 @@
 #if !defined(CONFIG_BOOT_MODE0)
 #define CONFIG_ENV_IS_IN_SPI_FLASH
 #define CONFIG_ENV_OFFSET	0x80000
+#define CONFIG_ENV_SECT_SIZE	0x40000		/* smallest erase sector size */
 #define CONFIG_ENV_SECT_SIZE	0x40000
 #else
 #define CONFIG_ENV_IS_IN_FLASH
