@@ -192,6 +192,7 @@ U_BOOT_CMD(
 #define CMNCR_0	0x3FEFA000	/* Common control register */
 #define DRCR_0	0x3FEFA00C	/* Data Read Control Register */
 #define DRCMR_0	0x3FEFA010	/* Data Read Command Setting Register */
+#define DREAR_0 0x3FEFA014	/* Data read extended address setting register */
 #define DRENR_0 0x3FEFA01C	/* Data read enable setting register */
 #define DROPR_0 0x3FEFA018	/* Data read option setting register */
 #define DMDMCR_0 0x3FEFA058	/* SPI Mode Dummy Cycle Setting Register */
@@ -465,6 +466,9 @@ int do_qspi(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 	*(volatile u32 *)DRCMR_0 = drcmr;
 	*(volatile u32 *)DROPR_0 = dropr;
 	*(volatile u32 *)DRDRENR_0 = drdrenr;
+
+	/* Allow 32MB of SPI addressing (POR default is only 16MB) */
+	*(volatile u32 *)DREAR_0 = 0x00000001;
 
 	/* Turn Read Burst on, Burst Length=2 uints (also set cache flush) */
 	/* Keep SSL low (SSLE=1) in case the next transfer is continugous with
