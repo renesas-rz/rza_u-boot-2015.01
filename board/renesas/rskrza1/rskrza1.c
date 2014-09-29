@@ -82,7 +82,7 @@ int board_late_init(void)
 	/* init PX01(IC34) */
 	tmp[0] = 0x00;
 	i2c_write(0x20, 3, 1, tmp, 1); /* config */
-	tmp[0] = 0xB7;
+	tmp[0] = 0x37;
 	i2c_write(0x20, 1, 1, tmp, 1); /* output */
 
 	/*init PX02(IC35) */
