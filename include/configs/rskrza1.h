@@ -45,8 +45,6 @@
 #define CONFIG_OF_LIBFDT
 #define CONFIG_CMDLINE_EDITING
 #define CONFIG_CMDLINE_TAG
-#define CONFIG_SETUP_MEMORY_TAGS
-#define CONFIG_INITRD_TAG
 
 #ifndef _CONFIG_CMD_DEFAULT_H
 # include <config_cmd_default.h>
@@ -116,7 +114,6 @@
 #define CONFIG_ENV_IS_IN_SPI_FLASH
 #define CONFIG_ENV_OFFSET	0x80000
 #define CONFIG_ENV_SECT_SIZE	0x40000		/* smallest erase sector size */
-#define CONFIG_ENV_SECT_SIZE	0x40000
 #else
 #define CONFIG_ENV_IS_IN_FLASH
 #define CONFIG_ENV_OFFSET	(512 * 1024)
