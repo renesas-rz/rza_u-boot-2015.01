@@ -132,7 +132,7 @@ int board_late_init(void)
 	/* Change XIP interface to dual QSPI */
 	setenv("x3", "qspi dual a4 d4 sdr");
 	setenv("xargs", "console=ttySC2,115200 console=tty0 ignore_loglevel root=/dev/mtdblock0"); // bootargs
-	setenv("x_boot", "run x1 x2 x3; set bootargs ${sargs}; fdt chosen; bootx 18200000 20500000"); // run the commands
+	setenv("x_boot", "run x1 x2 x3; set bootargs ${xargs}; fdt chosen; bootx 18200000 20500000"); // run the commands
 
 	return 0;
 }
