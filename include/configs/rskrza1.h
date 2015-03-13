@@ -12,9 +12,6 @@
 #ifndef __RSKRZA1_H
 #define __RSKRZA1_H
 
-//#define DEBUG
-//#undef DEBUG
-
 #define CONFIG_ARMV7		1	/* This is an ARM V7 CPU core */
 #define CONFIG_CPU_RZA1	1
 #define CONFIG_BOARD_LATE_INIT	1
@@ -40,7 +37,6 @@
 #define CONFIG_CMD_SNTP
 #define CONFIG_BOOTP_NTPSERVER
 #define CONFIG_BOOTP_TIMEOFFSET
-
 
 #define CONFIG_OF_LIBFDT
 #define CONFIG_CMDLINE_EDITING
