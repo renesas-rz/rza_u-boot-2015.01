@@ -131,6 +131,7 @@ static int spi_flash_validate_params(struct spi_slave *spi, u8 *idcode,
 	flash->name = params->name;
 	flash->memory_map = spi->memory_map;
 	flash->dual_flash = flash->spi->option;
+	flash->four_byte = (params->flags & SP_4B)?1:0;
 
 	/* Assign spi_flash ops */
 #ifndef CONFIG_DM_SPI_FLASH
@@ -178,6 +179,9 @@ static int spi_flash_validate_params(struct spi_slave *spi, u8 *idcode,
 	} else if (params->flags & SECT_32K) {
 		flash->erase_cmd = CMD_ERASE_32K;
 		flash->erase_size = 32768 << flash->shift;
+	} else if (params->flags & SP_4B) {
+		flash->erase_cmd = CMD_ERASE_SECTOR_4B;
+		flash->erase_size = flash->sector_size;
 	} else {
 		flash->erase_cmd = CMD_ERASE_64K;
 		flash->erase_size = flash->sector_size;
@@ -188,6 +192,8 @@ static int spi_flash_validate_params(struct spi_slave *spi, u8 *idcode,
 	if (cmd) {
 		cmd = spi_read_cmds_array[cmd - 1];
 		flash->read_cmd = cmd;
+	} else if (params->flags & SP_4B) {
+		flash->read_cmd = CMD_READ_ARRAY_FAST_4B;
 	} else {
 		/* Go for default supported read cmd */
 		flash->read_cmd = CMD_READ_ARRAY_FAST;
@@ -196,6 +202,8 @@ static int spi_flash_validate_params(struct spi_slave *spi, u8 *idcode,
 	/* Not require to look for fastest only two write cmds yet */
 	if (params->flags & WR_QPP && flash->spi->op_mode_tx & SPI_OPM_TX_QPP)
 		flash->write_cmd = CMD_QUAD_PAGE_PROGRAM;
+	else if (params->flags & SP_4B)
+		flash->write_cmd = CMD_PAGE_PROGRAM_4B;
 	else
 		/* Go for default supported write cmd */
 		flash->write_cmd = CMD_PAGE_PROGRAM;
@@ -385,10 +393,11 @@ int spi_flash_probe_slave(struct spi_slave *spi, struct spi_flash *flash)
 	puts("\n");
 #endif
 #ifndef CONFIG_SPI_FLASH_BAR
-	if (((flash->dual_flash == SF_SINGLE_FLASH) &&
+	if (!(flash->four_byte) &&
+	    (((flash->dual_flash == SF_SINGLE_FLASH) &&
 	     (flash->size > SPI_FLASH_16MB_BOUN)) ||
 	     ((flash->dual_flash > SF_SINGLE_FLASH) &&
-	     (flash->size > SPI_FLASH_16MB_BOUN << 1))) {
+	     (flash->size > SPI_FLASH_16MB_BOUN << 1)))) {
 		puts("SF: Warning - Only lower 16MiB accessible,");
 		puts(" Full access #define CONFIG_SPI_FLASH_BAR\n");
 	}

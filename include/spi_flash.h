@@ -39,6 +39,7 @@ struct spi_slave;
  * @spi:		SPI slave
  * @name:		Name of SPI flash
  * @dual_flash:	Indicates dual flash memories - dual stacked, parallel
+ * @four_byte:		Indicates support for Spansion 4 byte addressing
  * @shift:		Flash shift useful in dual parallel
  * @size:		Total flash size
  * @page_size:		Write (page) size
@@ -71,6 +72,7 @@ struct spi_flash {
 	const char *name;
 	u8 dual_flash;
 	u8 shift;
+	u8 four_byte;
 
 	u32 size;
 	u32 page_size;
