@@ -55,14 +55,14 @@ struct spi_slave* spi_setup_slave(unsigned int unBus, unsigned int unCs,
 	debug("call %s: bus(%d) cs(%0d) maxhz(%d) mode(%d))\n",
 		__func__, unBus, unCs, unMaxHz, unMode);
 
-	pstRzSpi = malloc(sizeof(struct stRzSpi));
+	pstRzSpi = spi_alloc_slave(struct stRzSpi, unBus, unCs);
 	if(pstRzSpi == NULL){
 		printf("%s: malloc error.\n", __func__);
 		return NULL;
 	}
 
-	pstRzSpi->stSpiSlave.bus	= unBus;
-	pstRzSpi->stSpiSlave.cs		= unCs;
+	pstRzSpi->slave.bus		= unBus;
+	pstRzSpi->slave.cs		= unCs;
 	pstRzSpi->pRegBase		= (void*)CONFIG_RZA1_BASE_QSPI0;
 	pstRzSpi->u8BitsPerWord		= 8;
 	pstRzSpi->u32MaxSpeedHz		= unMaxHz;
@@ -77,7 +77,7 @@ struct spi_slave* spi_setup_slave(unsigned int unBus, unsigned int unCs,
 	else
 		pstRzSpi->data_read_dual = 0;
 
-	if( pstRzSpi->stSpiSlave.cs )
+	if( pstRzSpi->slave.cs )
 		printf("SF: Dual SPI mode\n");
 
 	if (pstRzSpi->u8BitsPerWord == 0)
@@ -85,7 +85,7 @@ struct spi_slave* spi_setup_slave(unsigned int unBus, unsigned int unCs,
 
 	qspi_set_config_register(pstRzSpi);
 
-	return (struct spi_slave*)pstRzSpi;
+	return &pstRzSpi->slave;
 }
 
 /**
@@ -164,7 +164,6 @@ int spi_xfer(struct spi_slave* pstSpiSlave, unsigned int bitlen,
 	unsigned char* pbRxData		= (unsigned char*)din;
 	unsigned int len		= (bitlen + 7) / 8;
 	int ret				= 0;
-
 
 	debug("call %s: bus(%d) cs(%d) bitlen(%d) dout=(0x%08x) din=(0x%08x), flag=(%d)\n",
 		__func__, pstSpiSlave->bus, pstSpiSlave->cs,
@@ -308,7 +307,7 @@ static int qspi_set_config_register(struct stRzSpi* pstRzSpi)
 		CMNCR_BSZ(BSZ_SINGLE);
 
 	/* dual memory? */
-	if (pstRzSpi->stSpiSlave.cs)
+	if (pstRzSpi->slave.cs)
 		value |= CMNCR_BSZ(BSZ_DUAL);	/* s-flash x 2 */
 
 	/* set common */
@@ -393,7 +392,7 @@ static int qspi_set_ope_mode(struct stRzSpi* pstRzSpi, int mode)
 		cmncr |= CMNCR_MD;
 
 		/* cs=0 is single chip, cs=1 is dual chip */
-		if( pstRzSpi->stSpiSlave.cs )
+		if( pstRzSpi->slave.cs )
 			cmncr |= BSZ_DUAL;
 		else
 			cmncr &= ~BSZ_DUAL;
@@ -633,7 +632,7 @@ static int qspi_send_data(struct stRzSpi *pstRzSpi,
 	}
 	/* Unless we are reading or writting data, we need to take
 	   into account that there are 2 SPI devices */
-	if( pstRzSpi->stSpiSlave.cs )
+	if( pstRzSpi->slave.cs )
 	{
 		switch (pstRzSpi->this_cmd) {
 			case 0x01: /* Write Status and configuration */
@@ -650,7 +649,7 @@ static int qspi_send_data(struct stRzSpi *pstRzSpi,
 
 	while (unDataLength > 0) {
 
-		if( pstRzSpi->stSpiSlave.cs ) {
+		if( pstRzSpi->slave.cs ) {
 			/* Dual memory */
 			if (unDataLength >= 8)
 				unit = 8;
@@ -679,7 +678,7 @@ static int qspi_send_data(struct stRzSpi *pstRzSpi,
 			smenr |= SPIDE_for_single[unit];
 		}
 
-		if( !pstRzSpi->stSpiSlave.cs ) {
+		if( !pstRzSpi->slave.cs ) {
 			/* Single memory */
 
 			/* set data */
@@ -801,7 +800,7 @@ static int qspi_recv_data(struct stRzSpi* pstRzSpi,
 
 	/* Unless we are reading or writting data, we need to take
 	   into account that there are 2 SPI devices */
-	if( pstRzSpi->stSpiSlave.cs )
+	if( pstRzSpi->slave.cs )
 	{
 		switch (pstRzSpi->this_cmd) {
 			case 0x9F: /* Read ID */
@@ -813,7 +812,7 @@ static int qspi_recv_data(struct stRzSpi* pstRzSpi,
 		}
 	}
 	while (unDataLength > 0) {
-		if( pstRzSpi->stSpiSlave.cs ) {
+		if( pstRzSpi->slave.cs ) {
 			/* Dual memory */
 			if (unDataLength >= 8)
 				unit = 8;

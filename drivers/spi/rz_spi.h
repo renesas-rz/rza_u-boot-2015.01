@@ -24,7 +24,7 @@
 #include <spi.h>
 
 struct stRzSpi{
-	struct spi_slave	stSpiSlave;
+	struct spi_slave	slave;
 
 	volatile void*		pRegBase;
 	u8			u8BitsPerWord;	// bits_per_word
@@ -252,9 +252,9 @@ struct stRzSpi{
 #define	CMD_4PP			(0x12)	/* Page Program (4-byte address) */
 #define	CMD_4SE			(0xdc)	/* Sector Erase */
 
-static inline struct stRzSpi* to_rz_spi(struct spi_slave* slave)
+static inline struct stRzSpi* to_rz_spi(struct spi_slave* sl)
 {
-	return container_of(slave, struct stRzSpi, stSpiSlave);
+	return container_of(sl, struct stRzSpi, slave);
 }
 
 static inline u32 qspi_read32(struct stRzSpi* stRzSpi, int nOff)
