@@ -127,8 +127,7 @@ int board_late_init(void)
 	/* Read out DT blob */
 	setenv("x1", "sf probe 0; sf read 20500000 C0000 2000");
 	/* Change memory address in DTB */
-	//setenv("x2", "fdt addr 20500000 ; fdt memory 0x20000000 0x00A00000"); /* 10MB RAM */
-	setenv("x2", "fdt addr 20500000 ; fdt memory 0x20000000 0x00880000"); /* 8.5MB RAM (1.5MB for LCD)*/
+	setenv("x2", "fdt addr 20500000 ; fdt memory 0x20000000 0x00A00000"); /* 10MB RAM */
 	/* Change XIP interface to dual QSPI */
 	setenv("x3", "qspi dual a4 d4 sdr");
 	setenv("xargs", "console=ttySC2,115200 console=tty0 ignore_loglevel root=/dev/mtdblock0"); // bootargs
