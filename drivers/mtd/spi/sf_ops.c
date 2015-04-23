@@ -360,9 +360,19 @@ int spi_flash_cmd_write_ops(struct spi_flash *flash, u32 offset,
 
 	page_size = flash->page_size;
 
+	/* If Dual Flash chips (flagged with cs=1), you program twice
+	   as much data at once. */
+	if( flash->spi->cs == 1)
+		page_size *= 2;
+
 	cmd[0] = flash->write_cmd;
 	for (actual = 0; actual < len; actual += chunk_len) {
 		write_addr = offset;
+
+		/* If Dual Flash chips (flagged with cs=1), you send 2 bytes
+		   for each 1 address, so adjust address each time */
+		if( flash->spi->cs == 1)
+			write_addr = offset - actual/2;
 
 #ifdef CONFIG_SF_DUAL_FLASH
 		if (flash->dual_flash > SF_SINGLE_FLASH)
