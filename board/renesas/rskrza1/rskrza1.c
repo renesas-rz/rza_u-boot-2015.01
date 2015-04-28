@@ -112,6 +112,7 @@ int board_late_init(void)
 #endif
 
 	/* Boot uImage in external SDRAM */
+	/* Rootfs is a squashfs image in memory mapped QSPI */
 	/* => run s_boot */
 	setenv("s1", "sf probe 0; sf read 09800000 C0000 2000"); // Read out DT blob
 	setenv("s2", "sf probe 0:1; sf read 09000000 100000 500000"); //Copy Kernel to SDRAM
@@ -122,7 +123,7 @@ int board_late_init(void)
 	setenv("s_boot", "run s1 s2 s3 s4; set bootargs ${sargs}; fdt chosen; bootm go"); // run the commands
 
 	/* Boot XIP using internal RAM */
-	/* Read out DT, change to Quad SPI mode, then boot */
+	/* Rootfs is a squashfs image in memory mapped QSPI */
 	/* => run x_boot */
 	/* Read out DT blob */
 	setenv("x1", "sf probe 0; sf read 20500000 C0000 2000");
@@ -132,6 +133,18 @@ int board_late_init(void)
 	setenv("x3", "qspi dual a4 d4 sdr");
 	setenv("xargs", "console=ttySC2,115200 console=tty0 ignore_loglevel root=/dev/mtdblock0"); // bootargs
 	setenv("x_boot", "run x1 x2 x3; set bootargs ${xargs}; fdt chosen; bootx 18200000 20500000"); // run the commands
+
+	/* Boot XIP using internal RAM */
+	/* Rootfs is a AXFS image in memory mapped QSPI */
+	/* => run xa_boot */
+	/* Read out DT blob */
+	setenv("xa1", "sf probe 0; sf read 20500000 C0000 2000");
+	/* Change memory address in DTB */
+	setenv("xa2", "fdt addr 20500000 ; fdt memory 0x20000000 0x00A00000"); /* 10MB RAM */
+	/* Change XIP interface to dual QSPI */
+	setenv("xa3", "qspi dual a4 d4 sdr");
+	setenv("xaargs", "console=ttySC2,115200 console=tty0 ignore_loglevel root=/dev/null rootflags=physaddr=0x18800000"); // bootargs
+	setenv("xa_boot", "run xa1 xa2 xa3; set bootargs ${xaargs}; fdt chosen; bootx 18200000 20500000"); // run the commands
 
 	return 0;
 }
