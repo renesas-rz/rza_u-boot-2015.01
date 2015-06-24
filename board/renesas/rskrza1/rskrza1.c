@@ -155,11 +155,17 @@ int board_early_init_f(void)
 	pfc_set_pin_function(3, 0, ALT6, 0, 0);	/* P3_0 = TxD2 */
 	pfc_set_pin_function(3, 2, ALT4, 0, 0);	/* P3_2 = RxD2 */
 
-	/* QSPI (2nd SPI chip interface) */
-	pfc_set_pin_function(2, 12, ALT4, 0, 0);	/* P2_12 = SPBIO01_0 */
-	pfc_set_pin_function(2, 13, ALT4, 0, 0);	/* P2_13 = SPBIO11_0 */
-	pfc_set_pin_function(2, 14, ALT4, 0, 0);	/* P2_14 = SPBIO21_0 */
-	pfc_set_pin_function(2, 15, ALT4, 0, 0);	/* P2_15 = SPBIO31_0 */
+	/* QSPI_0 ch0 (booted in 1-bit, need to change to 4-bit) */
+	pfc_set_pin_function(9, 4, ALT2, 0, 1);	/* P9_4 = SPBIO00_0 (bi dir) */
+	pfc_set_pin_function(9, 5, ALT2, 0, 1);	/* P9_5 = SPBIO10_0 (bi dir) */
+	pfc_set_pin_function(9, 6, ALT2, 0, 1);	/* P9_6 = SPBIO20_0 (bi dir) */
+	pfc_set_pin_function(9, 7, ALT2, 0, 1);	/* P9_7 = SPBIO30_0 (bi dir) */
+
+	/* QSPI_0 ch1 (4-bit interface for dual QSPI mode) */
+	pfc_set_pin_function(2, 12, ALT4, 0, 1); /* P2_12 = SPBIO01_0 (bi dir) */
+	pfc_set_pin_function(2, 13, ALT4, 0, 1); /* P2_13 = SPBIO11_0 (bi dir) */
+	pfc_set_pin_function(2, 14, ALT4, 0, 1); /* P2_14 = SPBIO21_0 (bi dir) */
+	pfc_set_pin_function(2, 15, ALT4, 0, 1); /* P2_15 = SPBIO31_0 (bi dir) */
 
 	/* RIIC Ch 3 */
 	pfc_set_pin_function(1, 6, ALT1, 0, 1);	/* P1_6 = RIIC3SCL (bi dir) */
@@ -182,9 +188,14 @@ int board_early_init_f(void)
 	pfc_set_pin_function(2, 7, ALT2, 0, 0);	/* P2_7 = ET_TXD3 */
 	pfc_set_pin_function(2, 8, ALT2, 0, 0);	/* P2_8 = ET_RXD0 */
 	pfc_set_pin_function(2, 9, ALT2, 0, 0);	/* P2_9 = ET_RXD1 */
-	pfc_set_pin_function(2, 10, ALT2, 0, 0);	/* P2_10 = ET_RXD2 */
-	pfc_set_pin_function(2, 11, ALT2, 0, 0);	/* P2_11 = ET_RXD3 */
-	//pfc_set_pin_function(4, 14, ALT8, 0, 0);	/* P4_14 = IRQ6 (ET_IRQ) */ /* NOTE: u-boot doesn't enable interrupts */
+	pfc_set_pin_function(2, 10, ALT2, 0, 0); /* P2_10 = ET_RXD2 */
+	pfc_set_pin_function(2, 11, ALT2, 0, 0); /* P2_11 = ET_RXD3 */
+	//pfc_set_pin_function(4, 14, ALT8, 0, 0); /* P4_14 = IRQ6 (ET_IRQ) */ /* NOTE: u-boot doesn't enable interrupts */
+
+	/* Parallel NOR Flash  */
+	pfc_set_pin_function(9, 0, ALT1, 0, 0);	/* P9_0 = A24 */
+	pfc_set_pin_function(9, 1, ALT1, 0, 0);	/* P9_1 = A25 */
+
 
 
 	return 0;
