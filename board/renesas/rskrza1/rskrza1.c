@@ -146,6 +146,22 @@ int board_init(void)
 
 int board_early_init_f(void)
 {
+	/* This function runs early in the boot process, before u-boot is relocated
+	   to RAM (hence the '_f' in the function name stands for 'still running from
+	   flash'). A temporary stack has been set up for us which is why we can
+	   have this as C code. */
+
+	int i;
+
+	/* When booting from Parallel NOR, some pins need to be bi-directional */
+	/* CS0, RD, A1-A15 */
+	#if defined(CONFIG_BOOT_MODE0)
+	  #define NOR_BIDIR 1
+	  /* TODO: Replace '0' with 'NOR_BIDIR for those pins below */
+	#else
+	  #define NOR_BIDIR 0
+	#endif
+
 	rtc_reset();	/* to start rtc */
 
 	/* =========== Pin Setup =========== */
@@ -192,11 +208,92 @@ int board_early_init_f(void)
 	pfc_set_pin_function(2, 11, ALT2, 0, 0); /* P2_11 = ET_RXD3 */
 	//pfc_set_pin_function(4, 14, ALT8, 0, 0); /* P4_14 = IRQ6 (ET_IRQ) */ /* NOTE: u-boot doesn't enable interrupts */
 
-	/* Parallel NOR Flash  */
+	/* SDRAM */
+	pfc_set_pin_function(5, 8, ALT6, 0, 0);	/* P5_8 = CS2 */
+	for(i=0;i<=15;i++)
+		pfc_set_pin_function(6, i, ALT1, 0, 1);	/* P6_0~15 = D0-D15 (bi dir) */
+	pfc_set_pin_function(7, 2, ALT1, 0, 0);	/* P7_2 = RAS */
+	pfc_set_pin_function(7, 3, ALT1, 0, 0);	/* P7_3 = CAS */
+	pfc_set_pin_function(7, 4, ALT1, 0, 0);	/* P7_4 = CKE */
+	pfc_set_pin_function(7, 5, ALT1, 0, 0);	/* P7_5 = RD/WR */
+	pfc_set_pin_function(7, 6, ALT1, 0, 0);	/* P7_6 = WE0/DQMLL */
+	pfc_set_pin_function(7, 7, ALT1, 0, 0);	/* P7_7 = WE1/DQMLU */
+	for(i=9;i<=15;i++)
+		pfc_set_pin_function(7, i, ALT1, 0, 0);	/* P7_9~15: A1-A7 */
+	for(i=0;i<=15;i++)
+		pfc_set_pin_function(8, i, ALT1, 0, 0);	/* P8_0~15 = A8-A23 */
+
+	/* Parallel NOR Flash */
+	/* Assumes previous SDRAM setup A1-A23,D0-D15,WE0 */
 	pfc_set_pin_function(9, 0, ALT1, 0, 0);	/* P9_0 = A24 */
 	pfc_set_pin_function(9, 1, ALT1, 0, 0);	/* P9_1 = A25 */
+	pfc_set_pin_function(7, 8, ALT1, 0, 0);	/* P7_8 = RD */
+	pfc_set_pin_function(7, 0, ALT1, 0, 0);	/* P7_0 = CS0 */
+
+	/* LED 0 */
+	pfc_set_gpio(7, 1, GPIO_OUT); /* P7_1 = GPIO_OUT */
 
 
+	/**********************************************/
+	/* Configure NOR Flash Chip Select (CS0, CS1) */
+	/**********************************************/
+	#define CS0WCR_D	0x00000b40
+	#define CS0BCR_D	0x10000C00
+	#define CS1WCR_D	0x00000b40
+	#define CS1BCR_D	0x10000C00
+	*(u32 *)CS0WCR = CS0WCR_D;
+	*(u32 *)CS0BCR = CS0BCR_D;
+	*(u32 *)CS1WCR = CS1WCR_D;
+	*(u32 *)CS1BCR = CS1BCR_D;
+
+	/**********************************************/
+	/* Configure SDRAM (CS2, CS3)                 */
+	/**********************************************/
+	/* [[ RZ/A1H RSK BOARD ]]
+	* Note : This configuration is invalid for a single SDRAM and is a
+	*      : known limitation of the RSK+ board. The port pin used by
+	*      : CS3 is configured for LED0. To allow SDRAM operation CS2
+	*      : and CS3 must be configured to SDRAM. Option link R164 must
+	*      : NOT be fitted to avoid a Data Bus conflict on the SDRAM
+	*      : and expansion buffers. In a new application with one SDRAM
+	*      : always connect the SDRAM to CS3. On this RSK+ CS3 can not
+	*      : be used in another configuration including the expansion
+	*      : headers unless the SDRAM is completely disabled. For other
+	*      : external memory mapped devices CS1 is available for use
+	*      : with the expansion headers.
+	*      : See the hardware manual Bus State Controller
+	*/
+	/* Additionally, even though we are only using CS2, we need to set up
+	   the CS3 register becase some bits are common for CS3 and CS2 */
+
+	#define CS2BCR_D	0x00004C00
+	#define CS2WCR_D	0x00000480
+	#define CS3BCR_D	0x00004C00
+	#define CS3WCR_D	0x00004492
+	#define SDCR_D		0x00110811
+	#define RTCOR_D		0xA55A0080
+	#define RTCSR_D		0xA55A0008
+	*(u32 *)CS2BCR = CS2BCR_D;
+	*(u32 *)CS2WCR = CS2WCR_D;
+	*(u32 *)CS3BCR = CS3BCR_D;
+	*(u32 *)CS3WCR = CS3WCR_D;
+	*(u32 *)SDCR = SDCR_D;
+	*(u32 *)RTCOR = RTCOR_D;
+	*(u32 *)RTCSR = RTCSR_D;
+
+	/* wait */
+	#define REPEAT_D 0x000033F1
+	for (i=0;i<REPEAT_D;i++) {
+		asm("nop");
+	}
+
+	/* The final step is to set the SDRAM Mode Register by written to a
+	   specific address (the data value is ignored) */
+	/* Check the hardware manual if your settings differ */
+	#define SDRAM_MODE_CS2 0x3FFFD040
+	#define SDRAM_MODE_CS3 0x3FFFE040
+	*(u32 *)SDRAM_MODE_CS2 = 0;
+	*(u32 *)SDRAM_MODE_CS3 = 0;
 
 	return 0;
 }
