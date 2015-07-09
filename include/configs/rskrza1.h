@@ -138,6 +138,7 @@
 #define CONFIG_SPI_FLASH
 #define CONFIG_SPI_FLASH_SPANSION
 #define CONFIG_RZA1_BASE_QSPI0		0x3FEFA000
+#define CONFIG_SPI_FLASH_BAR		/* For SPI Flash bigger than 16MB */
 
 /* I2C configuration */
 #define CONFIG_SH_RIIC
