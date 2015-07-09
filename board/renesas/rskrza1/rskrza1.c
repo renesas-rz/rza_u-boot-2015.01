@@ -488,14 +488,42 @@ struct read_mode {
 	u8 cmd;
 	char name[50];
 };
-#define READ_MODES 5
+#define READ_MODES 9
 const struct read_mode modes[READ_MODES] = {
-	{0x03, "Read Mode (3-byte Addr)"},
+	{0x03, "Read Mode (3-byte Addr) (RZ/A1 reset value)"},
 	{0x0C, "Fast Read Mode (4-byte Addr)"},
 	{0x6C, "Quad Read Mode (4-byte Addr)"},
 	{0xEC, "Quad I/O Read Mode (4-byte Addr)"},
 	{0xEE, "Quad I/O DDR Read Mode (4-byte Addr)"},
+	{0x0B, "Fast Read Mode (3-byte Addr)"},
+	{0x6B, "Quad Read Mode (3-byte Addr)"},
+	{0xEB, "Quad I/O Read Mode (3-byte Addr)"},
+	{0xED, "Quad I/O DDR Read Mode (3-byte Addr)"},
 };
+
+/**********************/
+/* Spansion S25FL512S */
+/**********************/
+#if 0
+ #define ADDRESS_BYTE_SIZE 3	/* Addresses are 3-bytes (A0-A23) */
+ #define FAST_READ 0x0B		/* Fast Read Mode (1-bit cmd, 1-bit addr, 1-bit data, 3-bytes of address) */
+ #define QUAD_READ 0x6B		/* Quad Read Mode (1-bit cmd, 1-bit addr, 4-bit data, 3-bytes of address) */
+ #define QUAD_IO_READ 0xEB	/* Quad I/O Read Mode (1-bit cmd, 4-bit addr, 4-bit data, 3-bytes of address) */
+ #define QUAD_IO_DDR_READ 0xED	/* Quad I/O DDR Read Mode (1-bit cmd, 1-bit addr, 4-bit data, 3-bytes of address) */
+#else
+ #define ADDRESS_BYTE_SIZE 4	/* Addresses are 4-bytes (A0-A31) */
+ #define FAST_READ 0x0C		/* Fast Read Mode (1-bit cmd, 1-bit addr, 1-bit data, 4-bytes of address) */
+ #define QUAD_READ 0x6C		/* Quad Read Mode (1-bit cmd, 1-bit addr, 4-bit data, 4-bytes of address) */
+ #define QUAD_IO_READ 0xEC	/* Quad I/O Read Mode (1-bit cmd, 4-bit addr, 4-bit data, 4-bytes of address) */
+ #define QUAD_IO_DDR_READ 0xEE	/* Quad I/O DDR Read Mode (1-bit cmd, 1-bit addr, 4-bit data, 4-bytes of address) */
+#endif
+
+/* Number of Dummy cycles between Address and data */
+/* Spansion S25FL512S, Latency Code (LC)=00 (chip default) */
+#define FAST_RD_DMY 8		/* Fast Read Mode */
+#define QUAD_RD_DMY 8		/* Quad Read Mode  */
+#define QUAD_IO_RD_DMY 4	/* Quad I/O Read Mode  */
+#define QUAD_IO_DDR_RD_DMY 6	/* Quad I/O DDR Read Mode  */
 
 /* QUAD SPI MODE */
 int do_qspi(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
@@ -590,9 +618,9 @@ int do_qspi(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 	/* Spansion S25FL512S */
 	/**********************/
 
-	/* Skip SPI Flas configure if already correct */
+	/* Skip SPI Flash configure if already correct */
 //	if ( data[1] != 0x02 ) {
-	if ( 1  ) {
+	if ( 1  ) { /* Do every time to keep dual SPI flash in sync*/
 		data[0] = 0x00;	/* status reg: Don't Care */
 		if( quad_data )
 			data[1] = 0x02; /* confg reg: Set QUAD, LC=00b */
@@ -601,11 +629,8 @@ int do_qspi(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 			//data[1] = 0x00; /* confg reg: clear QUAD, LC=00b */
 
 		if( quad_addr )
-#ifdef LC_SET_TO_11 /* Dangerous! Once you set LC=11, it break JTAG programming */
-			data[1] = 0xC2; /* confg reg: Set QUAD, LC=11b */
-#else
 			data[1] = 0x02; /* confg reg: Set QUAD, LC=00b */
-#endif
+
 		/* Send Write Enable (WREN 06h) */
 		ret |= spi_flash_cmd(my_spi_flash->spi, 0x06, NULL, 0);
 
@@ -632,7 +657,7 @@ int do_qspi(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 
 	if ( ret )
 	{
-		printf("Failed to set SPI Flash Configuratin register.\n");
+		printf("Failed to set SPI Flash Configuration register.\n");
 		return 1;
 	}
 
@@ -647,7 +672,6 @@ int do_qspi(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 	if( dual_chip ) {
 		/* Switch to dual memory */
 		cmncr |= 0x00000001UL;
-
 	}
 	else {
 		/* Switch to single memory */
@@ -656,33 +680,42 @@ int do_qspi(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 
 	/* 1-bit address, 4-bit data */
 	if( quad_data && !quad_addr ) {
-		/* Set read cmd to 0x6C (Quad Read) */
-		drcmr = 0x006C0000UL;
+		/* Set read cmd to Quad Read */
+		drcmr = (u32)QUAD_READ << 16;
 
 		/* width: 1-bit cmd, 1-bit addr, 4-bit data */
+#if (ADDRESS_BYTE_SIZE == 4)
 		/* address: 32 bits */
 		drenr = 0x00024f00UL;
-
+#else /* ADDRESS_BYTE_SIZE == 3 */
+		/* address: 24 bits */
+		drenr = 0x00024700UL;
+#endif
 		/* According to the Spansion spec (Table 8.5), dummy cycles
 		   are needed when LC=00b for QUAD READ commands */
 		/* Add extra Dummy cycles between address and data */
-		dmdmcr = 0x00020007; /* 4 bit width, 8 cycles */
+		dmdmcr = 0x00020000 | (QUAD_RD_DMY-1); /* 4 bit width, 8 cycles */
 		drenr |= 0x00008000; /* Set Dummy Cycle Enable (DME) */
 	}
 
 	/* 1-bit address, 1-bit data */
 	if( !quad_data && !quad_addr ) {
-		/* Set read cmd to 0x0C (FAST Read) */
-		drcmr =0x000C0000;
+		/* Set read cmd to FAST Read */
+		drcmr = (u32)FAST_READ << 16;
 
 		/* width: 1-bit cmd, 1-bit addr, 1-bit data */
+#if (ADDRESS_BYTE_SIZE == 4)
 		/* address: 32 bits */
 		drenr = 0x00004f00;
+#else /* ADDRESS_BYTE_SIZE == 3 */
+		/* address: 24 bits */
+		drenr = 0x00004700;
+#endif
 
 		/* According to the Spansion spec (Table 8.5), dummy cycles
 		   are needed when LC=00b for FAST READ commnds */
 		/* Add extra Dummy cycles between address and data */
-		dmdmcr = 0x00000007; /* 1 bit width, 8 cycles */
+		dmdmcr = 0x00000000 | (FAST_RD_DMY-1); /* 1 bit width, 8 cycles */
 		drenr |= 0x00008000; /* Set Dummy Cycle Enable (DME) */
 	}
 
@@ -699,12 +732,17 @@ int do_qspi(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 			See "Figure 10.37 Quad I/O Read Command Sequence" in Spansion spec
 		*/
 
-		/* Set read cmd to 0xEC (Quad I/O) */
-		drcmr =0x00EC0000;
+		/* Set read cmd to Quad I/O */
+		drcmr = (u32)QUAD_IO_READ << 16;
 
 		/* width: 1-bit cmd, 4-bit addr, 4-bit data */
+#if (ADDRESS_BYTE_SIZE == 4)
 		/* address: 32 bits */
 		drenr = 0x02024f00;
+#else /* ADDRESS_BYTE_SIZE == 3 */
+		/* address: 24 bits */
+		drenr = 0x02024700;
+#endif
 
 		/* Use Option data regsiters to output 0x00 to write the
 		   'mode' byte by sending OPD3 (at 4-bit) between address
@@ -715,11 +753,8 @@ int do_qspi(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 		/* According to the Spansion spec (Table 8.5), dummy cycles
 		   are needed when LC=00b for QUAD I/O READ commnds */
 		/* Add extra Dummy cycles between address and data */
-#ifdef LC_SET_TO_11 /* Dangerous! Once you set LC=11, it break JTAG programming */
-		dmdmcr = 0x00020000; /* 4 bit size, 1 cycle */
-#else
-		dmdmcr = 0x00020003; /* 4 bit size, 4 cycles */
-#endif
+		dmdmcr = 0x00020000 | (QUAD_IO_RD_DMY-1); /* 4 bit size, 4 cycles */
+
 		drenr |= 0x00008000; /* Set Dummy Cycle Enable (DME) */
 	}
 
@@ -728,8 +763,8 @@ int do_qspi(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 			"   The Spansion SPI flash has an extra phase in the command stream\n"
 			"   that we can't account for.\n");
 
-		/* Set read cmd to 0xEE (Read DDR Quad I/O) */
-		drcmr =0x00EE0000;
+		/* Set read cmd to Read DDR Quad I/O */
+		drcmr = (u32)QUAD_IO_DDR_READ << 16;
 
 		/* Address, option and data all 4-bit DDR */
 		drdrenr = 0x00000111;
@@ -737,7 +772,7 @@ int do_qspi(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 		/* According to the Spansion spec (Table 8.5), dummy cycles
 		   are needed when LC=00b for READ DDR QUAD I/O commnds */
 		/* Add extra Dummy cycles between address and data */
-		dmdmcr = 0x00020005; /* 4 bit size, 6 cycles */
+		dmdmcr = 0x00020000 | (QUAD_IO_DDR_RD_DMY-1); /* 4 bit size, 6 cycles */
 		drenr |= 0x00008000; /* Set Dummy Cycle Enable (DME) */
 	}
 	else {
@@ -759,7 +794,12 @@ int do_qspi(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 	/* Keep SSL low (SSLE=1) in case the next transfer is continugous with
 	   our last...saves on address cycle. */
 	*(u32 *)DRCR_0 = 0x00010301;
+	asm("nop");
 	*(volatile u32 *)DRCR_0;	/* Read must be done after cache flush */
+
+	/* Do some dummy reads (our of order) to help clean things up */
+	*(volatile u32 *)0x18000010;
+	*(volatile int *)0x18000000;
 
 	printf("New Mode: ");
 	cmd = (*(volatile long *)DRCMR_0 >> 16) & 0xFF;
