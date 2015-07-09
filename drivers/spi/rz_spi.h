@@ -27,12 +27,8 @@ struct stRzSpi{
 	struct spi_slave	slave;
 
 	volatile void*		pRegBase;
-	u8			u8BitsPerWord;	// bits_per_word
 	u32			u32MaxSpeedHz;	// max_speed_hz
 	unsigned int		unMode;
-
-	u32			u32DataBitw;	// data_bitw
-	u32			u32DummyCycle;	// dmy_cycle
 
 	u8			data_read_dual;	// single or dual chips in data read mode
 	u8			this_cmd;	// what is the current SPI command

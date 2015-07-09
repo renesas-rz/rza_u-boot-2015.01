@@ -7,6 +7,7 @@
  * Based on /drivers/met/spi/sh_spi.c
  *
  * Copyright (C) 2011-2014 Renesas Solutions Corp.
+ * Copyright (C) 2015 Renesas Electronics America
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -39,13 +40,12 @@ static int qspi_set_config_register(struct stRzSpi*);
 static u32 qspi_calc_spbcr(struct stRzSpi* pstRzSpi);
 static int qspi_set_ope_mode(struct stRzSpi*,int);
 static int qspi_wait_for_tend(struct stRzSpi*);
-static void qspi_set_busio(struct stRzSpi*,u8);
-static int qspi_send_cmd(struct stRzSpi*,const u8*,unsigned int,int);
-static int qspi_send_data(struct stRzSpi*,const u8*,unsigned int);
-static int qspi_recv_data(struct stRzSpi*,u8*,unsigned int);
+
+static int qspi_send_data(struct stRzSpi*,const u8*,unsigned int,unsigned int);
+static int qspi_recv_data(struct stRzSpi*,u8*,unsigned int,unsigned int);
 
 /**
- *
+ * Required function for u-boot SPI subsystem
  */
 struct spi_slave* spi_setup_slave(unsigned int unBus, unsigned int unCs,
 	unsigned int unMaxHz, unsigned int unMode)
@@ -64,11 +64,8 @@ struct spi_slave* spi_setup_slave(unsigned int unBus, unsigned int unCs,
 	pstRzSpi->slave.bus		= unBus;
 	pstRzSpi->slave.cs		= unCs;
 	pstRzSpi->pRegBase		= (void*)CONFIG_RZA1_BASE_QSPI0;
-	pstRzSpi->u8BitsPerWord		= 8;
 	pstRzSpi->u32MaxSpeedHz		= unMaxHz;
 	pstRzSpi->unMode		= unMode;
-	pstRzSpi->u32DataBitw		= BITW_1BIT;
-	pstRzSpi->u32DummyCycle		= 0;
 
 	/* Save if we were usign 1 or 2 chips in data read mode
 	   (so we can put it back when we're done) */
@@ -80,16 +77,13 @@ struct spi_slave* spi_setup_slave(unsigned int unBus, unsigned int unCs,
 	if( pstRzSpi->slave.cs )
 		printf("SF: Dual SPI mode\n");
 
-	if (pstRzSpi->u8BitsPerWord == 0)
-		pstRzSpi->u8BitsPerWord = 8;
-
 	qspi_set_config_register(pstRzSpi);
 
 	return &pstRzSpi->slave;
 }
 
 /**
- *
+ * Required function for u-boot SPI subsystem
  */
 void spi_free_slave(struct spi_slave* pstSpiSlave)
 {
@@ -100,7 +94,7 @@ void spi_free_slave(struct spi_slave* pstSpiSlave)
 }
 
 /**
- *
+ * Required function for u-boot SPI subsystem
  */
 int spi_claim_bus(struct spi_slave* pstSpiSlave)
 {
@@ -110,7 +104,7 @@ int spi_claim_bus(struct spi_slave* pstSpiSlave)
 }
 
 /**
- *
+ * Required function for u-boot SPI subsystem
  */
 void spi_release_bus(struct spi_slave* pstSpiSlave)
 {
@@ -119,16 +113,13 @@ void spi_release_bus(struct spi_slave* pstSpiSlave)
 }
 
 /**
- *
+ * Required function for u-boot SPI subsystem
  */
 int spi_cs_is_valid(unsigned int bus, unsigned int cs)
 {
 	debug("call %s: bus(%d) cs(%d)\n", __func__, bus, cs);
 
-	/* This driver supports "bus = 0" and "cs = 0" only. */
-//	if (!bus && !cs)
-
-	// use cs=1 to mean we want to use 2 spi flashes
+	/* Use cs=1 to mean we want to use 2 spi flashes */
 	if (!bus && (cs ==0 || cs==1) )
 		return 1;
 	else
@@ -136,7 +127,7 @@ int spi_cs_is_valid(unsigned int bus, unsigned int cs)
 }
 
 /**
- *
+ * Required function for u-boot SPI subsystem
  */
 void spi_cs_activate(struct spi_slave* pstSpiSlave)
 {
@@ -145,7 +136,7 @@ void spi_cs_activate(struct spi_slave* pstSpiSlave)
 }
 
 /**
- *
+ * Required function for u-boot SPI subsystem
  */
 void spi_cs_deactivate(struct spi_slave* pstSpiSlave)
 {
@@ -154,16 +145,18 @@ void spi_cs_deactivate(struct spi_slave* pstSpiSlave)
 }
 
 /**
- *
+ * Required function for u-boot SPI subsystem
  */
 int spi_xfer(struct spi_slave* pstSpiSlave, unsigned int bitlen,
 	const void* dout, void* din, unsigned long flags)
 {
 	struct stRzSpi *pstRzSpi	= to_rz_spi(pstSpiSlave);
-	const unsigned char* pbTxData	= (const unsigned char*)dout;
+	unsigned char* pbTxData		= (unsigned char*)dout;
 	unsigned char* pbRxData		= (unsigned char*)din;
 	unsigned int len		= (bitlen + 7) / 8;
 	int ret				= 0;
+	int keep_cs_low			= flags & SPI_XFER_END ? 0 : 1;
+	unsigned char dual_cmd[12];
 
 	debug("call %s: bus(%d) cs(%d) bitlen(%d) dout=(0x%08x) din=(0x%08x), flag=(%d)\n",
 		__func__, pstSpiSlave->bus, pstSpiSlave->cs,
@@ -188,10 +181,23 @@ int spi_xfer(struct spi_slave* pstSpiSlave, unsigned int bitlen,
 
 	if(pbTxData){
 		if(flags & SPI_XFER_BEGIN){
-			qspi_set_busio(pstRzSpi, *pbTxData);
 			pstRzSpi->this_cmd = *pbTxData;
-			ret = qspi_send_cmd(pstRzSpi, pbTxData, len,
-				(flags & SPI_XFER_END) ? 0 : 1);
+
+			/* If this is a dual SPI Flash, we need to send the same
+			   command to both chips. */
+			if( pstRzSpi->slave.cs )
+			{
+				int i,j;
+				for(i=0,j=0;i<len;i++) {
+					dual_cmd[j++] = pbTxData[i];
+					dual_cmd[j++] = pbTxData[i];
+				}
+				len *= 2;
+				pbTxData = dual_cmd;
+			}
+
+			ret = qspi_send_data(pstRzSpi, pbTxData, len, keep_cs_low);
+
 			if(ret < 0){
 				printf("%s: Error Send Command (%x)\n", __func__, ret);
 			}else{
@@ -206,7 +212,26 @@ int spi_xfer(struct spi_slave* pstSpiSlave, unsigned int bitlen,
 #endif
 			}
 		}else{
-			ret = qspi_send_data(pstRzSpi, pbTxData, len);
+
+			/* If this is a dual SPI Flash, we need to send the same
+			   command data to both chips. */
+			if( pstRzSpi->slave.cs )
+			{
+				int i,j;
+				switch (pstRzSpi->this_cmd) {
+					case 0x17: /* Write Bank register */
+					case 0x01: /* Write Status and configuration */
+						for(i=0,j=0;i<len;i++) {
+							dual_cmd[j++] = pbTxData[i];
+							dual_cmd[j++] = pbTxData[i];
+						}
+						len *= 2;
+						pbTxData = dual_cmd;
+						break;
+				}
+			}
+
+			ret = qspi_send_data(pstRzSpi, pbTxData, len, keep_cs_low);
 			if(ret < 0){
 				printf("%s: Error Send Data (%x)\n", __func__, ret);
 			}else{
@@ -229,7 +254,7 @@ int spi_xfer(struct spi_slave* pstSpiSlave, unsigned int bitlen,
 	}
 	if(ret == 0 && pbRxData){
 
-		ret = qspi_recv_data(pstRzSpi, pbRxData, len);
+		ret = qspi_recv_data(pstRzSpi, pbRxData, len, keep_cs_low);
 		if(ret < 0){
 			printf("%s: Error Recv Data (%x)\n", __func__, ret);
 		}else{
@@ -362,13 +387,16 @@ static int qspi_set_ope_mode(struct stRzSpi* pstRzSpi, int mode)
 {
 	int ret;
 	u32 cmncr = qspi_read32(pstRzSpi, QSPI_CMNCR);
+	u32 drcr;
 
-	debug("call %s: mode=%d\n", __func__, mode);
+	debug("call %s: mode=%d(%s)\n", __func__, mode, mode==SPI_MODE ? "SPI": "XIP");
 
 	if((mode == SPI_MODE) && (cmncr & CMNCR_MD)){
+		debug("Already in correct mode\n");
 		return 0;
 	}
 	if((mode != SPI_MODE) && !(cmncr & CMNCR_MD)){
+		debug("Already in correct mode\n");
 		return 0;
 	}
 
@@ -414,48 +442,15 @@ static int qspi_set_ope_mode(struct stRzSpi* pstRzSpi, int mode)
 			cmncr &= ~BSZ_DUAL;
 
 		qspi_write32(pstRzSpi, cmncr, QSPI_CMNCR);
-#if 0
 
-//Dont touch anything else...just leave it...
-		qspi_write32(pstRzSpi, DRCR_SSLE, QSPI_DRCR);
-		ret = qspi_wait_for_tend(pstRzSpi);
-		if(ret){
-			printf("%s: hw busy\n", __func__);
-			return ret;
-		}else{
-			u32 u32DRENR, u32DRCMR, u32DROPR;
+		// Flush cache
+		drcr = qspi_read32(pstRzSpi, QSPI_DRCR);
+		drcr |= DRCR_RCF;
+		qspi_write32(pstRzSpi, drcr, QSPI_DRCR);
 
-			u32DRENR = u32DRCMR = u32DROPR = 0;
-			// Command
-#if 1
-			u32DRCMR |= DRCMR_CMD(CMD_4FAST_READ);
-#else
-			u32DRCMR |= DRCMR_CMD(CMD_READ_ARRAY_FAST);
-#endif
-			u32DRENR |= DRENR_CDB(BITW_1BIT);
-			u32DRENR |= DRENR_CDE;
-			// Option
-			u32DRCMR |= DRCMR_OCMD(0);
-			u32DRENR |= DRENR_OCDB(BITW_1BIT);
-			// Address
-			u32DRENR |= DRENR_ADB(BITW_1BIT);
-			u32DRENR |= DRENR_ADE(ADE_31_0);
-			// Option Data
-			u32DROPR |= DROPR_OPD3(0x00);
-			u32DROPR |= DROPR_OPD2(0x00);
-			u32DROPR |= DROPR_OPD1(0x00);
-			u32DROPR |= DROPR_OPD0(0x00);
-			u32DRENR |= DRENR_OPDB(BITW_1BIT);
-			u32DRENR |= DRENR_OPDE(OPDE_3);
-			// Data
-			u32DRENR |= DRENR_DRDB(BITW_1BIT);
-
-			qspi_write32(pstRzSpi, u32DRCMR, QSPI_DRCMR);
-			qspi_write32(pstRzSpi, u32DROPR, QSPI_DROPR);
-			qspi_write32(pstRzSpi, u32DRENR, QSPI_DRENR);
-		}
-#endif
-
+		/* Do some dummy reads (our of order) to help clean things up */
+		*(volatile int *)0x18000010;
+		*(volatile int *)0x18000000;
 	}
 
 	return 0;
@@ -483,119 +478,6 @@ static int qspi_wait_for_tend(struct stRzSpi* pstRzSpi)
 	return 0;
 }
 
-/**
- *
- */
-static void qspi_set_busio(struct stRzSpi* pstRzSpi,u8 cmd)
-{
-	u32 data_bitw;
-	u32 dmy_cycle;
-
-	debug("call %s:\n", __func__);
-
-	switch (cmd) {
-	case CMD_FAST_READ:	/* 0x0b Fast Read (3-byte address) */
-	case CMD_4FAST_READ:	/* 0x0b Fast Read (3-byte address) */
-		dmy_cycle = 8;
-		data_bitw = BITW_1BIT;
-		break;
-	case CMD_QOR:		/* 0x6b Read Quad Out (3-byte address) */
-		dmy_cycle = 8;
-		data_bitw = BITW_4BIT;
-		break;
-	case CMD_QPP:		/* 0x32 Quad Page Program (3-byte address) */
-		dmy_cycle = 0;
-		data_bitw = BITW_4BIT;
-		break;
-	default:
-		data_bitw = BITW_1BIT;
-		dmy_cycle = 0;
-		break;
-	}
-
-	pstRzSpi->u32DataBitw	= data_bitw;
-	pstRzSpi->u32DummyCycle	= dmy_cycle;
-
-	return;
-}
-
-/**
- *
- */
-static int qspi_send_cmd(struct stRzSpi* pstRzSpi, const u8* pcnu8CmdBuff,
-	unsigned int unCmdLength, int sslkp)
-{
-	int ret;
-	u32 cmd;
-	u32 addr = 0;
-	u32 smopr = 0;
-	u32 smenr = 0;
-	u32 smcr;
-	u32 smdmcr = 0;
-
-	debug("call %s:\n", __func__);
-
-	/* wait spi transfered */
-	if ((ret = qspi_wait_for_tend(pstRzSpi)) < 0) {
-		printf("%s: prev xmit timeout\n", __func__);
-		return ret;
-	}
-	/* set command */
-	cmd = SMCMR_CMD(*(pcnu8CmdBuff + 0));
-
-	/* set enable command, 1bit stream. */
-	smenr = SMENR_CDE|SMENR_CDB(BITW_1BIT);
-
-	if (unCmdLength == 3) {	/* set option data  */
-		// set option data.
-		smopr |= SMOPR_OPD3(*(pcnu8CmdBuff + 1));
-		smopr |= SMOPR_OPD2(*(pcnu8CmdBuff + 2));
-		// set OPT3 OPT2, 1bit stream.
-		smenr |= SMENR_OPDE(OPDE_3_2)|SMENR_OPDB(BITW_1BIT);
-	}
-	if (unCmdLength == 2) {	/* set option data */
-		// set option data.
-		smopr |= SMOPR_OPD3(*(pcnu8CmdBuff + 1));
-		// OPD3, 1bit stream.
-		smenr |= SMENR_OPDE(OPDE_3)|SMENR_OPDB(BITW_1BIT);
-	}
-	if (unCmdLength >= 5) {	/* set address */
-		// set address param.
-		addr =	((u32)*(pcnu8CmdBuff + 1) << 24) |
-			((u32)*(pcnu8CmdBuff + 2) << 16) |
-			((u32)*(pcnu8CmdBuff + 3) << 8)  |
-			(u32)*(pcnu8CmdBuff + 4);
-		// 32bits address, 1bit stream
-		smenr |= SMENR_ADE(ADE_31_0)|SMENR_ADB(BITW_1BIT);
-		// set dummy param.
-		if (pstRzSpi->u32DummyCycle > 0) {
-			smenr |= SMENR_DME;
-			smdmcr = SMDMCR_DMDB(BITW_1BIT)|SMDMCR_DMCYC(pstRzSpi->u32DummyCycle - 1);
-		}
-	}
-	/* set params */
-	qspi_write32(pstRzSpi, cmd,	QSPI_SMCMR);	// write command.
-	qspi_write32(pstRzSpi, addr,	QSPI_SMADR);	// write address.
-	qspi_write32(pstRzSpi, smopr,	QSPI_SMOPR);	// write option.
-	qspi_write32(pstRzSpi, smenr,	QSPI_SMENR);	// write enable.
-	qspi_write32(pstRzSpi, smdmcr,	QSPI_SMDMCR);	// write dummy cycle.
-
-	/* Set SPI Data Transfer Enable first */
-	smcr = SMCR_SPIWE;
-	if (sslkp)
-		smcr |= SMCR_SSLKP;	/* keep SSL low after transfer */
-	qspi_write32(pstRzSpi, smcr, QSPI_SMCR);
-
-	/* start spi transfer */
-	smcr |= SMCR_SPIE;
-	qspi_write32(pstRzSpi, smcr, QSPI_SMCR);	// write control byte
-
-	return 0;
-}
-
-/**
- *
- */
 const u8 SPIDE_for_single[5] = {0x0,
 		0x8,	// 8-bit transfer (1 bytes)
 		0xC,	// 16-bit transfer (2 bytes)
@@ -610,9 +492,11 @@ const u8 SPIDE_for_dual[9] = {0,
 		0x0,	// 48-bit transfers are invalid!
 		0x0,	// 56-bit transfers are invalid!
 		0xF};	// 64-bit transfer (8 bytes)
-
+/**
+ *
+ */
 static int qspi_send_data(struct stRzSpi *pstRzSpi,
-	const u8* pcnu8DataBuff, unsigned int unDataLength)
+	const u8* pcnu8DataBuff, unsigned int unDataLength, unsigned int keep_cs_low)
 {
 	int ret;
 	u32 smcr;
@@ -621,7 +505,6 @@ static int qspi_send_data(struct stRzSpi *pstRzSpi,
 	u32 smwdr1 = 0;
 	int unit;
 	int sslkp = 1;
-	u8 data[10];
 
 	debug("call %s:\n", __func__);
 
@@ -629,22 +512,6 @@ static int qspi_send_data(struct stRzSpi *pstRzSpi,
 	if ((ret = qspi_wait_for_tend(pstRzSpi)) < 0) {
 		printf("%s: prev xmit timeout\n", __func__);
 		return ret;
-	}
-	/* Unless we are reading or writting data, we need to take
-	   into account that there are 2 SPI devices */
-	if( pstRzSpi->slave.cs )
-	{
-		switch (pstRzSpi->this_cmd) {
-			case 0x01: /* Write Status and configuration */
-				/* duplicate our data to both chips */
-				data[0] = pcnu8DataBuff[0];
-				data[1] = pcnu8DataBuff[0];
-				data[2] = pcnu8DataBuff[1];
-				data[3] = pcnu8DataBuff[1];
-				pcnu8DataBuff = data;
-				unDataLength = 4;
-				break;
-		}
 	}
 
 	while (unDataLength > 0) {
@@ -664,6 +531,7 @@ static int qspi_send_data(struct stRzSpi *pstRzSpi,
 			if( unit == 6 )
 				unit = 4; /* 6 byte transfers not supported */
 
+			smenr &= ~0xF;	/* clear SPIDE bits */
 			smenr |= SPIDE_for_dual[unit];
 		}
 		else {
@@ -675,6 +543,7 @@ static int qspi_send_data(struct stRzSpi *pstRzSpi,
 			if(unit == 3)
 				unit = 2;	/* 3 byte transfers not supported */
 
+			smenr &= ~0xF;	/* clear SPIDE bits */
 			smenr |= SPIDE_for_single[unit];
 		}
 
@@ -712,27 +581,6 @@ static int qspi_send_data(struct stRzSpi *pstRzSpi,
 			}
 		}
 
-#if 0 // is this code really needed????
-		/* mask unwrite area */
-		if (unit == 3) {
-			smwdr0 |= 0xFF000000;
-		} else if (unit == 2) {
-			smwdr0 |= 0xFFFF0000;
-		} else if (unit == 1) {
-			smwdr0 |= 0xFFFFFF00;
-		}
-
-		if( pstRzSpi->stSpiSlave.cs ) {
-			/* Dual memory */
-			if (unit == 7) {
-				smwdr1 |= 0xFF000000;
-			} else if (unit == 6) {
-				smwdr1 |= 0xFFFF0000;
-			} else if (unit == 5) {
-				smwdr1 |= 0xFFFFFF00;
-			}
-		}
-#endif
 		/* Write data to send */
 		if (unit == 2){
 			qspi_write16(pstRzSpi, (u16)smwdr0, QSPI_SMWDR0);
@@ -762,7 +610,7 @@ static int qspi_send_data(struct stRzSpi *pstRzSpi,
 
 		/* start spi transfer */
 		smcr = SMCR_SPIE|SMCR_SPIWE;
-		if (sslkp)
+		if (sslkp || keep_cs_low)
 			smcr |= SMCR_SSLKP;
 		qspi_write32(pstRzSpi, smcr, QSPI_SMCR);
 
@@ -771,6 +619,7 @@ static int qspi_send_data(struct stRzSpi *pstRzSpi,
 			printf("%s: data send timeout\n", __func__);
 			return ret;
 		}
+
 	}
 	return 0;
 }
@@ -779,7 +628,7 @@ static int qspi_send_data(struct stRzSpi *pstRzSpi,
  *
  */
 static int qspi_recv_data(struct stRzSpi* pstRzSpi,
-	u8* pu8DataBuff, unsigned int unDataLength)
+	u8* pu8DataBuff, unsigned int unDataLength, unsigned int keep_cs_low)
 {
 	int ret;
 	u32 smcr;
@@ -806,11 +655,13 @@ static int qspi_recv_data(struct stRzSpi* pstRzSpi,
 			case 0x9F: /* Read ID */
 			case 0x05: /* Read Status register */
 			case 0x35: /* Read configuration register */
+			case 0x16: /* Read Bank register */
 				combine = 1;
 				unDataLength *= 2;	// get twice as much data.
 				break;
 		}
 	}
+
 	while (unDataLength > 0) {
 		if( pstRzSpi->slave.cs ) {
 			/* Dual memory */
@@ -853,10 +704,8 @@ static int qspi_recv_data(struct stRzSpi* pstRzSpi,
 		qspi_write32(pstRzSpi, smenr, QSPI_SMENR);
 
 		/* start spi transfer */
-		smcr = SMCR_SPIE|SMCR_SPIRE;
-		if (pstRzSpi->u32DataBitw == BITW_1BIT)
-			smcr |= SMCR_SPIWE;
-		if (sslkp)
+		smcr = SMCR_SPIE|SMCR_SPIRE|SMCR_SPIWE;
+		if (sslkp | keep_cs_low )
 			smcr |= SMCR_SSLKP;
 		qspi_write32(pstRzSpi, smcr, QSPI_SMCR);
 
@@ -866,24 +715,10 @@ static int qspi_recv_data(struct stRzSpi* pstRzSpi,
 			return ret;
 		}
 
-	#if 0
-		if (unit == 2)
-			smrdr0 = qspi_read16(pstRzSpi, QSPI_SMRDR0);
-		else if (unit == 1)
-			smrdr0 = qspi_read8(pstRzSpi, QSPI_SMRDR0);
-		else
-			smrdr0 = qspi_read32(pstRzSpi, QSPI_SMRDR0);
-
-		if( unit == 8 ) {
-			/* Dual Memory */
-			smrdr1 = qspi_read32(pstRzSpi, QSPI_SMRDR1);
-		}
-	#else
 		/* Just read both regsiters. We'll figure out what parts
 		   are valid later */
 		smrdr0 = qspi_read32(pstRzSpi, QSPI_SMRDR0);
 		smrdr1 = qspi_read32(pstRzSpi, QSPI_SMRDR1);
-	#endif
 
 		if( !combine ) {
 			if (unit == 8) {
