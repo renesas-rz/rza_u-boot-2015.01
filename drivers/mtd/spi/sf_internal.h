@@ -43,17 +43,13 @@ enum {
 	SST_BP		= 1 << 3,
 	SST_WP		= 1 << 4,
 	WR_QPP		= 1 << 5,
-	SP_4B		= 1 << 6,
 };
 
 #define SST_WR		(SST_BP | SST_WP)
 
-//#define SPI_FLASH_3B_ADDR_LEN		3
-//#define SPI_FLASH_CMD_LEN		(1 + SPI_FLASH_3B_ADDR_LEN)
-//#define SPI_FLASH_16MB_BOUN		0x1000000
-#define SPI_FLASH_3B_ADDR_LEN		4
+#define SPI_FLASH_3B_ADDR_LEN		3
 #define SPI_FLASH_CMD_LEN		(1 + SPI_FLASH_3B_ADDR_LEN)
-#define SPI_FLASH_16MB_BOUN		0xc000000
+#define SPI_FLASH_16MB_BOUN		0x1000000
 
 /* CFI Manufacture ID's */
 #define SPI_FLASH_CFI_MFR_SPANSION	0x01
@@ -66,12 +62,10 @@ enum {
 #define CMD_ERASE_32K			0x52
 #define CMD_ERASE_CHIP			0xc7
 #define CMD_ERASE_64K			0xd8
-#define CMD_ERASE_SECTOR_4B		0xdc
 
 /* Write commands */
 #define CMD_WRITE_STATUS		0x01
 #define CMD_PAGE_PROGRAM		0x02
-#define CMD_PAGE_PROGRAM_4B		0x12
 #define CMD_WRITE_DISABLE		0x04
 #define CMD_READ_STATUS		0x05
 #define CMD_QUAD_PAGE_PROGRAM		0x32
@@ -83,7 +77,6 @@ enum {
 /* Read commands */
 #define CMD_READ_ARRAY_SLOW		0x03
 #define CMD_READ_ARRAY_FAST		0x0b
-#define CMD_READ_ARRAY_FAST_4B		0x0c
 #define CMD_READ_DUAL_OUTPUT_FAST	0x3b
 #define CMD_READ_DUAL_IO_FAST		0xbb
 #define CMD_READ_QUAD_OUTPUT_FAST	0x6b
