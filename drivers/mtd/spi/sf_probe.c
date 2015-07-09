@@ -237,8 +237,15 @@ static int spi_flash_validate_params(struct spi_slave *spi, u8 *idcode,
 		flash->bank_write_cmd = (idcode[0] == 0x01) ?
 					CMD_BANKADDR_BRWR : CMD_EXTNADDR_WREAR;
 
+#if 0
 		ret = spi_flash_read_common(flash, &flash->bank_read_cmd, 1,
 					    &curr_bank, 1);
+#else
+		/* Force to Bank 0 (to keep dual flashes in sync) */
+		ret = spi_flash_write_common(flash, &flash->bank_write_cmd, 1,
+					    &curr_bank, 1);
+#endif
+
 		if (ret) {
 			debug("SF: fail to read bank addr register\n");
 			return ret;
