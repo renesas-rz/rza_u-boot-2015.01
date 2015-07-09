@@ -1,6 +1,4 @@
 /*
- * Copyright (C) 2013 Renesas Solutions Corp.
- *
  * (C) Copyright 2002-2006
  * Wolfgang Denk, DENX Software Engineering, wd@denx.de.
  *

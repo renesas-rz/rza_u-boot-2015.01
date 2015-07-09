@@ -1,7 +1,6 @@
 #
 # (C) Copyright 2001-2006
 # Wolfgang Denk, DENX Software Engineering, wd@denx.de.
-# Copyright (C) 2013 Renesas Solutions Corp.
 #
 # SPDX-License-Identifier:	GPL-2.0+
 #
