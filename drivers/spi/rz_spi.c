@@ -275,6 +275,11 @@ int spi_xfer(struct spi_slave* pstSpiSlave, unsigned int bitlen,
 	}
 
 	if(flags & SPI_XFER_END){
+		/* Make sure CS goes back low (it might have been left high
+		   from the last transfer). It's tricky because basically,
+		   you have to disable RD and WR, then start a dummy transfer. */
+		qspi_write32(pstRzSpi, 1 , QSPI_SMCR);
+
 		ret = qspi_set_ope_mode(pstRzSpi, READ_MODE);
 		if(ret){
 			printf("%s: Unknown SPI mode\n", __func__);
@@ -447,10 +452,6 @@ static int qspi_set_ope_mode(struct stRzSpi* pstRzSpi, int mode)
 		drcr = qspi_read32(pstRzSpi, QSPI_DRCR);
 		drcr |= DRCR_RCF;
 		qspi_write32(pstRzSpi, drcr, QSPI_DRCR);
-
-		/* Do some dummy reads (our of order) to help clean things up */
-		*(volatile int *)0x18000010;
-		*(volatile int *)0x18000000;
 	}
 
 	return 0;
