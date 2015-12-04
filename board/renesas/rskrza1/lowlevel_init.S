@@ -45,6 +45,9 @@ lowlevel_init:
 	write8 STBCR11, STBCR11_D
 	write8 STBCR12, STBCR12_D
 
+	/* For serial booting, enable read ahead caching to speed things up */
+#define DRCR_0  0x3FEFA00C
+	write32 DRCR_0, 0x00010100	/* Read Burst ON, Length=2 */
 
 	/* Enable all internal RAM */
 	write8 SYSCR1, 0xFF
