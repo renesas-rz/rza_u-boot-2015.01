@@ -44,6 +44,8 @@ static int qspi_wait_for_tend(struct stRzSpi*);
 static int qspi_send_data(struct stRzSpi*,const u8*,unsigned int,unsigned int);
 static int qspi_recv_data(struct stRzSpi*,u8*,unsigned int,unsigned int);
 
+int qspi_disable_combine = 0;	// Don't combine responses from dual SPI flash
+
 /**
  * Required function for u-boot SPI subsystem
  */
@@ -219,8 +221,11 @@ int spi_xfer(struct spi_slave* pstSpiSlave, unsigned int bitlen,
 			{
 				int i,j;
 				switch (pstRzSpi->this_cmd) {
-					case 0x17: /* Write Bank register */
+					case 0x17: /* Write Bank register (CMD_BANKADDR_BRWR) */
+					case 0xC5: /* Write Bank register (CMD_EXTNADDR_WREAR) */
 					case 0x01: /* Write Status and configuration */
+					case 0xB1: /* Write NonVolatile Configuration register (Micron) */
+					case 0x81: /* Write Volatile Configuration register (Micron) */
 						for(i=0,j=0;i<len;i++) {
 							dual_cmd[j++] = pbTxData[i];
 							dual_cmd[j++] = pbTxData[i];
@@ -291,6 +296,45 @@ int spi_xfer(struct spi_slave* pstSpiSlave, unsigned int bitlen,
 
 	return ret;
 }
+
+/* This function is called when "sf probe" is issued, meaning that
+   the user wants to access the deivcce in normal single wire SPI mode.
+   Since some SPI devices have to have special setups to enable QSPI mode
+   or DDR QSPI mode, this function is used to reset those settings
+   back to normal.
+
+   This is a 'weak' function because it is intended that each board
+   implements its own function to overide this one. */
+struct spi_flash;
+__attribute__((weak))
+int qspi_reset_device(struct spi_flash *flash)
+{
+	printf("Warning: You should implement your own qspi_reset_device function\n");
+	return 0;
+}
+
+/**
+ * qspi_disable_auto_combine
+ *
+ * This function is useful only when you are in dual SPI flash mode
+ * and you want to send a command but not have the results from
+ * the 2 devices OR-ed together (becase you need to check each SPI
+ * Flash individually).
+ *
+ * Just remember that you need to send a buffer size big enough to handle
+ * the results from both SPI flashes.
+ *
+ * This only effects the very next command sent, after that it will
+ * automatically reset.
+ *
+ * NOTE: You will need to add a prototype of this function in your
+ * code to use it (it's not in any header file).
+ */
+void qspi_disable_auto_combine(void)
+{
+	qspi_disable_combine = 1;
+}
+
 
 /**
  *
@@ -648,20 +692,27 @@ static int qspi_recv_data(struct stRzSpi* pstRzSpi,
 		return ret;
 	}
 
-	/* Unless we are reading or writting data, we need to take
-	   into account that there are 2 SPI devices */
-	if( pstRzSpi->slave.cs )
+	/* When receiving data from a command, we need to take into account
+	   that there are 2 SPI devices (that each will return values) */
+	if( pstRzSpi->slave.cs && !qspi_disable_combine)
 	{
 		switch (pstRzSpi->this_cmd) {
 			case 0x9F: /* Read ID */
-			case 0x05: /* Read Status register */
+			case 0x05: /* Read Status register (CMD_READ_STATUS) */
+			case 0x70: /* Read Status register (CMD_FLAG_STATUS) */
 			case 0x35: /* Read configuration register */
-			case 0x16: /* Read Bank register */
+			case 0x16: /* Read Bank register (CMD_BANKADDR_BRRD) */
+			case 0xC8: /* Read Bank register (CMD_EXTNADDR_RDEAR) */
+			case 0xB5: /* Read NONVolatile Configuration register (Micron) */
+			case 0x85: /* Read Volatile Configuration register (Micron) */
 				combine = 1;
 				unDataLength *= 2;	// get twice as much data.
 				break;
 		}
 	}
+
+	/* Reset after each command */
+	qspi_disable_combine = 0;
 
 	while (unDataLength > 0) {
 		if( pstRzSpi->slave.cs ) {

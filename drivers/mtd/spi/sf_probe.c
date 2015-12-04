@@ -19,6 +19,11 @@
 
 #include "sf_internal.h"
 
+/* RZ/A1 BSP*/
+/* NOTE: When "sf probe" is called, we might have to do some additional
+   setup on the SPI Flash chip to get it out of QUAD mode. */
+extern int qspi_reset_device(struct spi_flash *flash);
+
 DECLARE_GLOBAL_DATA_PTR;
 
 /* Read commands array */
@@ -192,6 +197,11 @@ static int spi_flash_validate_params(struct spi_slave *spi, u8 *idcode,
 		/* Go for default supported read cmd */
 		flash->read_cmd = CMD_READ_ARRAY_FAST;
 	}
+
+	/* RZ/A1 BSP */
+	/* Sometimes we have to do strange things to support devices
+	   in QUAD mode, so we need to reset them back before we continue. */
+	qspi_reset_device(flash);
 
 	/* Not require to look for fastest only two write cmds yet */
 	if (params->flags & WR_QPP && flash->spi->op_mode_tx & SPI_OPM_TX_QPP)
