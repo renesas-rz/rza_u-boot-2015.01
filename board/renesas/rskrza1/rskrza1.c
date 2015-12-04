@@ -368,7 +368,7 @@ int board_late_init(void)
 	setenv("s2", "sf probe 0:1; sf read 09000000 100000 500000"); //Copy Kernel to SDRAM
 	setenv("s3", "bootm start 0x09000000 - 0x09800000 ; bootm loados ;"\
 			"fdt memory 0x08000000 0x02000000"); // Change memory address in DTB
-	setenv("s4", "qspi dual a4 d4 sdr"); // Change XIP interface to dual QSPI
+	setenv("s4", "qspi dual"); // Change XIP interface to dual QSPI
 	setenv("sargs", "console=ttySC2,115200 console=tty0 ignore_loglevel root=/dev/mtdblock0"); // bootargs
 	setenv("s_boot", "run s1 s2 s3 s4; set bootargs ${sargs}; fdt chosen; bootm go"); // run the commands
 
@@ -380,7 +380,7 @@ int board_late_init(void)
 	/* Change memory address in DTB */
 	setenv("x2", "fdt addr 20500000 ; fdt memory 0x20000000 0x00A00000"); /* 10MB RAM */
 	/* Change XIP interface to dual QSPI */
-	setenv("x3", "qspi dual a4 d4 sdr");
+	setenv("x3", "qspi dual");
 	setenv("xargs", "console=ttySC2,115200 console=tty0 ignore_loglevel root=/dev/mtdblock0"); // bootargs
 	setenv("x_boot", "run x1 x2 x3; set bootargs ${xargs}; fdt chosen; bootx 18200000 20500000"); // run the commands
 
@@ -392,7 +392,7 @@ int board_late_init(void)
 	/* Change memory address in DTB */
 	setenv("xa2", "fdt addr 20500000 ; fdt memory 0x20000000 0x00A00000"); /* 10MB RAM */
 	/* Change XIP interface to dual QSPI */
-	setenv("xa3", "qspi dual a4 d4 sdr");
+	setenv("xa3", "qspi dual");
 	setenv("xaargs", "console=ttySC2,115200 console=tty0 ignore_loglevel root=/dev/null rootflags=physaddr=0x18800000"); // bootargs
 	setenv("xa_boot", "run xa1 xa2 xa3; set bootargs ${xaargs}; fdt chosen; bootx 18200000 20500000"); // run the commands
 
@@ -539,8 +539,8 @@ int do_qspi(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 	u8 ddr;
 	u32 dmdmcr, drenr, cmncr, drcmr, dropr, drdrenr;
 
-	/* need at least two arguments */
-	if (argc < 4)
+	/* need at least 1 argument (single/dual) */
+	if (argc < 2)
 		goto usage;
 
 	if ( strcmp(argv[1], "single") == 0)
@@ -550,21 +550,27 @@ int do_qspi(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 	else
 		goto usage;
 
-	if ( strcmp(argv[2], "a1") == 0)
+	if ( argc <= 2 )
+		quad_addr = 1;
+	else if ( strcmp(argv[2], "a1") == 0)
 		quad_addr = 0;
 	else if ( strcmp(argv[2], "a4") == 0)
 		quad_addr = 1;
 	else
 		goto usage;
 
-	if ( strcmp(argv[3], "d1") == 0)
+	if ( argc <= 3 )
+		quad_data = 1;
+	else if ( strcmp(argv[3], "d1") == 0)
 		quad_data = 0;
 	else if ( strcmp(argv[3], "d4") == 0)
 		quad_data = 1;
 	else
 		goto usage;
 
-	if ( strcmp(argv[4], "sdr") == 0)
+	if ( argc <= 4 )
+		ddr = 0;
+	else if ( strcmp(argv[4], "sdr") == 0)
 		ddr = 0;
 	else if ( strcmp(argv[4], "ddr") == 0)
 		ddr = 1;
@@ -814,7 +820,8 @@ usage:
 }
 static char qspi_help_text[] =
 	"Set the XIP Mode for QSPI\n"
-	"Usage: qspi [single|dual] [a1|a4] [d1|d4] [sdr|ddr]\n"
+	"Usage: qspi [single|dual] [a1|(a4)] [d1|(d4)] [(sdr)|ddr]\n"
+	"  (xx) means defualt value if not specified\n"
 	"  'a4' requries 'd4' to be set\n"
 	"  'ddr' requries 'd4' and 'a4' to be set\n";
 U_BOOT_CMD(
