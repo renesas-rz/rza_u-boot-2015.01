@@ -799,7 +799,7 @@ int remove_dummy_micron(struct spi_flash *sf)
    back to normal single wire FAST_READ mode. */
 int qspi_reset_device(struct spi_flash *sf)
 {
-	int ret;
+	int ret = 0;
 
 	if( !strcmp(sf->name, "S25FL512S_256K") ) {
 		/* Don't really need to do anything */
