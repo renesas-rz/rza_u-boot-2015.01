@@ -45,6 +45,7 @@ static int qspi_send_data(struct stRzSpi*,const u8*,unsigned int,unsigned int);
 static int qspi_recv_data(struct stRzSpi*,u8*,unsigned int,unsigned int);
 
 int qspi_disable_combine = 0;	// Don't combine responses from dual SPI flash
+int qspi_combine_status_mode = 0; // Dual mode only, 0='OR results', 1='AND results'
 
 /**
  * Required function for u-boot SPI subsystem
@@ -711,6 +712,14 @@ static int qspi_recv_data(struct stRzSpi* pstRzSpi,
 		}
 	}
 
+	/* Flash devices with this command wait for bit 7 to go high (not LOW) when
+	   erase or writting is done, so we need to AND the results, not OR them,
+	   when running in dual SPI flash mode */
+	if( pstRzSpi->this_cmd == 0x70 )
+		qspi_combine_status_mode = 1; /* AND results (WIP = 1 when ready) */
+	else
+		qspi_combine_status_mode = 0; /* OR resutls (WIP = 0 when ready) */
+
 	/* Reset after each command */
 	qspi_disable_combine = 0;
 
@@ -795,22 +804,43 @@ static int qspi_recv_data(struct stRzSpi* pstRzSpi,
 		}
 		else {
 			/* Dual Memory - Combine 2 streams back into 1 */
-			/* OR together the data coming back so the WIP bit can be
+			/* OR/AND together the data coming back so the WIP bit can be
 			   checked for erase/write operations */
+			/* Combine results together */
 			if ( unit == 8 ) {
 				/* SMRDR1 always has the begining of the RX data stream */
-				*pu8DataBuff++ = (u8)(smrdr1 & 0xff) | (u8)((smrdr1 >> 8) & 0xff);
-				*pu8DataBuff++ = (u8)((smrdr1 >> 16) & 0xff) | (u8)((smrdr1 >> 24) & 0xff);
-				*pu8DataBuff++ = (u8)(smrdr0 & 0xff) | (u8)((smrdr0 >> 8) & 0xff);
-				*pu8DataBuff++ = (u8)((smrdr0 >> 16) & 0xff) | (u8)((smrdr0 >> 24) & 0xff);
+				if( qspi_combine_status_mode) { /* AND results together */
+					*pu8DataBuff++ = (u8)(smrdr1 & 0xff) & (u8)((smrdr1 >> 8) & 0xff);
+					*pu8DataBuff++ = (u8)((smrdr1 >> 16) & 0xff) & (u8)((smrdr1 >> 24) & 0xff);
+					*pu8DataBuff++ = (u8)(smrdr0 & 0xff) & (u8)((smrdr0 >> 8) & 0xff);
+					*pu8DataBuff++ = (u8)((smrdr0 >> 16) & 0xff) & (u8)((smrdr0 >> 24) & 0xff);
+				}
+				else {	/* OR results together */
+					*pu8DataBuff++ = (u8)(smrdr1 & 0xff) | (u8)((smrdr1 >> 8) & 0xff);
+					*pu8DataBuff++ = (u8)((smrdr1 >> 16) & 0xff) | (u8)((smrdr1 >> 24) & 0xff);
+					*pu8DataBuff++ = (u8)(smrdr0 & 0xff) | (u8)((smrdr0 >> 8) & 0xff);
+					*pu8DataBuff++ = (u8)((smrdr0 >> 16) & 0xff) | (u8)((smrdr0 >> 24) & 0xff);
+				}
 			}
 
 			if( unit == 2 ) {
-				*pu8DataBuff++ = (u8)(smrdr0 & 0xff) | (u8)((smrdr0 >> 8) & 0xff);
+				if( qspi_combine_status_mode) { /* AND results together */
+					*pu8DataBuff++ = (u8)(smrdr0 & 0xff) & (u8)((smrdr0 >> 8) & 0xff);
+				}
+				else {	/* OR results together */
+					*pu8DataBuff++ = (u8)(smrdr0 & 0xff) | (u8)((smrdr0 >> 8) & 0xff);
+				}
+
 			}
 			if (unit == 4) {
-				*pu8DataBuff++ = (u8)(smrdr0 & 0xff) | (u8)((smrdr0 >> 8) & 0xff);
-				*pu8DataBuff++ = (u8)((smrdr0 >> 16) & 0xff) | (u8)((smrdr0 >> 24) & 0xff);
+				if( qspi_combine_status_mode) { /* AND results together */
+					*pu8DataBuff++ = (u8)(smrdr0 & 0xff) & (u8)((smrdr0 >> 8) & 0xff);
+					*pu8DataBuff++ = (u8)((smrdr0 >> 16) & 0xff) & (u8)((smrdr0 >> 24) & 0xff);
+				}
+				else {	/* OR results together */
+					*pu8DataBuff++ = (u8)(smrdr0 & 0xff) | (u8)((smrdr0 >> 8) & 0xff);
+					*pu8DataBuff++ = (u8)((smrdr0 >> 16) & 0xff) | (u8)((smrdr0 >> 24) & 0xff);
+				}
 			}
 		}
 	}
