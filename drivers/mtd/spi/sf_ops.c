@@ -250,6 +250,12 @@ int spi_flash_cmd_erase_ops(struct spi_flash *flash, u32 offset, size_t len)
 	u32 erase_size, erase_addr;
 	u8 cmd[SPI_FLASH_CMD_LEN];
 	int ret = -1;
+#ifdef CONFIG_SF_SHOW_PROGRESS
+	u32 total_len = len;
+	u8 last_percent=0;
+	u8 percent;
+	int blocks = 0;
+#endif
 
 	erase_size = flash->erase_size;
 	if (offset % erase_size || len % erase_size) {
@@ -257,8 +263,18 @@ int spi_flash_cmd_erase_ops(struct spi_flash *flash, u32 offset, size_t len)
 		return -1;
 	}
 
+#ifdef CONFIG_SF_SHOW_PROGRESS
+	printf("Erase status:   0%%");
+#endif
 	cmd[0] = flash->erase_cmd;
 	while (len) {
+#ifdef CONFIG_SF_SHOW_PROGRESS
+		blocks++;
+		percent = ((total_len - len) * 100) / total_len;
+		if( last_percent != percent )
+			printf("\b\b\b\b%3u%%",percent);
+		last_percent = percent;
+#endif
 		erase_addr = offset;
 
 #ifdef CONFIG_SF_DUAL_FLASH
@@ -285,6 +301,9 @@ int spi_flash_cmd_erase_ops(struct spi_flash *flash, u32 offset, size_t len)
 		len -= erase_size;
 	}
 
+#ifdef CONFIG_SF_SHOW_PROGRESS
+	printf("\b\b\b\b100%%    %d blocks erased.\n", blocks);
+#endif
 	return ret;
 }
 
@@ -296,6 +315,10 @@ int spi_flash_cmd_write_ops(struct spi_flash *flash, u32 offset,
 	size_t chunk_len, actual;
 	u8 cmd[SPI_FLASH_CMD_LEN];
 	int ret = -1;
+#ifdef CONFIG_SF_SHOW_PROGRESS
+	u8 last_percent=0;
+	u8 percent;
+#endif
 
 	page_size = flash->page_size;
 
@@ -304,8 +327,18 @@ int spi_flash_cmd_write_ops(struct spi_flash *flash, u32 offset,
 	if( flash->spi->cs == 1)
 		page_size *= 2;
 
+#ifdef CONFIG_SF_SHOW_PROGRESS
+	printf("Write status:   0%%");
+#endif
 	cmd[0] = flash->write_cmd;
 	for (actual = 0; actual < len; actual += chunk_len) {
+#ifdef CONFIG_SF_SHOW_PROGRESS
+		percent = ((u32)actual * 100) / len;
+		if( last_percent != percent )
+			printf("\b\b\b\b%3u%%",percent);
+		last_percent = percent;
+#endif
+
 		write_addr = offset;
 
 		/* If Dual Flash chips (flagged with cs=1), you send 2 bytes
@@ -344,6 +377,9 @@ int spi_flash_cmd_write_ops(struct spi_flash *flash, u32 offset,
 		offset += chunk_len;
 	}
 
+#ifdef CONFIG_SF_SHOW_PROGRESS
+	printf("\b\b\b\b100%%\n");
+#endif
 	return ret;
 }
 
