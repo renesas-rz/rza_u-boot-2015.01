@@ -77,11 +77,21 @@
 /* u-boot relocated to top 256KB of ram */
 #define CONFIG_NR_DRAM_BANKS		1
 #if !defined(CONFIG_BOOT_MODE0)
-#define CONFIG_SYS_TEXT_BASE		0x18000000
+
+/* SPI_FLASH_LOADER: Build a version that can be downloaded to RAM directly and run
+   in order to be used to program QSPI flash for the first time. */
+/* #define SPI_FLASH_LOADER */
+
+#ifdef SPI_FLASH_LOADER
+ #define CONFIG_SYS_TEXT_BASE		0x20020000
+ #define CONFIG_ENV_IS_NOWHERE
+#else
+ #define CONFIG_SYS_TEXT_BASE		0x18000000
+#endif
 #else
 #define CONFIG_SYS_TEXT_BASE		0x00000000
 #endif
-#define USE_INTERNAL_RAM 1
+#define USE_INTERNAL_RAM
 #ifdef USE_INTERNAL_RAM
  #define CONFIG_SYS_SDRAM_BASE		0x20000000
  #define CONFIG_SYS_SDRAM_SIZE		(10 * 1024 * 1024)
@@ -118,7 +128,9 @@
 #endif
 
 #if !defined(CONFIG_BOOT_MODE0)
-#define CONFIG_ENV_IS_IN_SPI_FLASH
+#ifndef SPI_FLASH_LOADER
+  #define CONFIG_ENV_IS_IN_SPI_FLASH
+#endif
 #define CONFIG_ENV_OFFSET	0x80000
 #define CONFIG_ENV_SECT_SIZE	0x40000		/* smallest erase sector size */
 #else
