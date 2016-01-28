@@ -137,7 +137,7 @@
 #define ICBRL_RESERVED	0xe0	/* The write value shoud always be 1 */
 #define ICBRL_BRL_MASK	0x1f
 
-#define RIIC_TIMEOUT	10000	/* 100msec (unit = 10usec) */
+#define RIIC_TIMEOUT	(100)	/* 100 msec */
 
 struct riic_data {
 	unsigned int reg;
@@ -169,7 +169,7 @@ static unsigned int current_bus;
 int i2c_set_bus_num(unsigned int bus)
 {
 	if ((bus < 0) || (bus >= CONFIG_SYS_MAX_I2C_BUS)) {
-		printf("Bad bus: %d\n", bus);
+		debug("%s: bad bus: %d\n", __func__, bus);
 		return -1;
 	}
 
@@ -234,7 +234,7 @@ static int riic_set_clock(struct riic_data *pd, int clock)
 		break;
 
 	default:
-		printf("unsupported clock (%dkHz)\n", clock);
+		debug("%s: unsupported clock (%dkHz)\n", __func__, clock);
 		return -EINVAL;
 	}
 
@@ -243,11 +243,18 @@ static int riic_set_clock(struct riic_data *pd, int clock)
 
 static int riic_check_busy(void)
 {
-	if (riic_read(pd, RIIC_ICCR2) & ICCR2_BBSY) {
-		printf("i2c bus is busy.\n");
-		return -EBUSY;
-	}
-	return 0;
+	/* As for I2C specification, min. bus-free-time is 
+		4.7 us(Sm) and 1.3 us(Fm). */
+	ulong start, timeout = (ulong)RIIC_TIMEOUT;
+
+	start = get_timer(0);
+	do {
+		if (!(riic_read(pd, RIIC_ICCR2) & ICCR2_BBSY))
+			return 0;
+	} while (get_timer(start) < timeout);
+
+	debug("%s: i2c bus is busy.\n", __func__);
+	return -EBUSY;
 }
 
 static int riic_init_setting(struct riic_data *pd, int clock)
@@ -274,18 +281,18 @@ static int riic_init_setting(struct riic_data *pd, int clock)
 static int riic_wait_for_icsr2(struct riic_data *pd, unsigned short bit)
 {
 	unsigned char icsr2;
-	int timeout = RIIC_TIMEOUT;
+	ulong start, timeout = (ulong)RIIC_TIMEOUT;
 
-	while (timeout-- > 0) {
+	start = get_timer(0);
+	do {
 		icsr2 = riic_read(pd, RIIC_ICSR2);
 		if (icsr2 & ICSR2_NACKF)
 			return -EIO;
 		if (icsr2 & bit)
 			return 0;
-		udelay(10);
-	}
+	} while (get_timer(start) < timeout);
 
-	printf("%s: Timeout!(bit = %x icsr2 = %x, iccr2 = %x)\n", __func__,
+	debug("%s: timeout!(bit = %x icsr2 = %x, iccr2 = %x)\n", __func__,
 		bit, riic_read(pd, RIIC_ICSR2), riic_read(pd, RIIC_ICCR2));
 
 	return -ETIMEDOUT;
@@ -337,7 +344,7 @@ static int riic_i2c_raw_read(u8 *buf, int len)
 	int ret = 0;
 	int index = 0;
 
-	while ((len - 1) > index) {
+	do {
 		ret = riic_wait_for_icsr2(pd, ICSR2_RDRF);
 		if (ret < 0)
 			return ret;
@@ -348,7 +355,7 @@ static int riic_i2c_raw_read(u8 *buf, int len)
 		else
 			index++;
 		riic_set_receive_ack(pd, 1);
-	}
+	} while (index < (len - 1));
 
 	ret = riic_wait_for_icsr2(pd, ICSR2_RDRF);
 	if (ret < 0)
@@ -509,7 +516,9 @@ unsigned int i2c_get_bus_num(void)
 
 int i2c_probe(u8 chip)
 {
-	return 0;
+	u8 dummy;
+
+	return i2c_read(chip, 0, 1, &dummy, sizeof(dummy));
 }
 
 void i2c_init(int speed, int slaveaddr)
