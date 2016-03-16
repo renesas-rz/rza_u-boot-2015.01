@@ -67,9 +67,41 @@ const u32 alt_settings[9][3] = {
 */
 void pfc_set_gpio(u8 n, u8 b, u8 d)
 {
-	*(u32 *)PMCSRn(n) = 1UL<<(b+16);	// Pin as GPIO
-	*(u32 *)PSRn(n) = 1UL<<(b+16) | (u32)d<< b;	// Set direction
+	*(u32 *)PMCSRn(n) = 1UL<<(b+16);		// Pin as GPIO
+	*(u32 *)PMSRn(n) = 1UL<<(b+16) | (u32)d << b;	// Set pin IN/OUT
+
+	if( d == GPIO_IN )
+		*(u16 *)PIBCn(n) |= 1UL << b; 		// Enable input buffer
+	else
+		*(u16 *)PIBCn(n) &= ~(1UL << b); 	// Disable input buffer
 }
+
+/* Arguments:
+   n = port(1-11)
+   b = bit(0-15)
+   v = value (0 or 1)
+*/
+void gpio_set(u8 n, u8 b, u8 v)
+{
+	/* The pin should have been configured as GPIO_OUT using pfc_set_gpio */
+
+	/* Use the 'Port Set and Reset Register' to only effect the pin bit */
+	/* Upper WORD is the bit mask, the lower WORD is the desire pin level */
+	*(u32 *)PSRn(n) = 1UL<<(b+16) | (u32)v<< b;	// Set pin to 0/1
+}
+
+/* Arguments:
+   n = port(1-11)
+   b = bit(0-15)
+   return = current pin level (0 or 1);
+*/
+u8 gpio_read(u8 n, u8 b)
+{
+	/* The pin should have been configured as GPIO_IN using pfc_set_gpio */
+printf("PPRn(%d) %04X\n",n,*(u16 *)PPRn(n));
+	return ( *(u16 *)PPRn(n) >> b ) & 0x0001;
+}
+
 
 /* Arguments:
     n = port number (P1-P11)
@@ -239,6 +271,13 @@ int board_early_init_f(void)
 
 	/* LED 0 */
 	pfc_set_gpio(7, 1, GPIO_OUT); /* P7_1 = GPIO_OUT */
+
+	/* SW1 */
+	pfc_set_gpio(1, 9, GPIO_IN); /* P1_9 = GPIO_IN */
+	/* SW2 */
+	pfc_set_gpio(1, 8, GPIO_IN); /* P1_8 = GPIO_IN */
+	/* SW3 */
+	pfc_set_gpio(1, 11, GPIO_IN); /* P1_11 = GPIO_IN */
 
 
 	/**********************************************/
@@ -436,6 +475,25 @@ void reset_cpu(ulong addr)
 
 void led_set_state(unsigned short value)
 {
+	if (value)	/* turn LED on */
+		gpio_set(7,1,0);
+	else		/* turn LED off */
+		gpio_set(7,1,1);
+}
+
+u8 button_check_state(u8 sw)
+{
+	/* returns: 1 = button up
+		    0 = button pressed
+	*/
+
+	if (sw == 1)	/* SW 1 */
+		return gpio_read(1, 9);
+	if (sw == 2)	/* SW 2 */
+		return gpio_read(1, 8);
+	if (sw == 3)	/* SW 3 */
+		return gpio_read(1, 11);
+	return 1;
 }
 
 /* XIP Kernel boot */
