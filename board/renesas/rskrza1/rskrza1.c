@@ -992,6 +992,13 @@ int do_qspi(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 	/***************************/
 	/* Set up RZ SPI Registers */
 	/***************************/
+
+	/* Set data pins HIGH when not being used. This helps make sure that
+	if you go from dual chip to single chip, only FF will get
+	transfered out tp the second chip. */
+	cmncr &= ~0x00FF0000UL;
+	cmncr |=  0x00550000UL;
+
 	/* Enable data swap (SFDE) */
 	/* Keeps the endian order of bytes the same on the internal bus
 	   regardless of how you fetched them over SPI */
