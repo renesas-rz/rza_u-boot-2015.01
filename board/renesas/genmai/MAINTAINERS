@@ -1,0 +1,6 @@
+GENMAI BOARD
+#M:	-
+S:	Maintained
+F:	board/renesas/genmai/
+F:	include/configs/genmai.h
+F:	configs/genami_defconfig
