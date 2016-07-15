@@ -37,6 +37,7 @@
 #define CONFIG_CMD_SNTP
 #define CONFIG_BOOTP_NTPSERVER
 #define CONFIG_BOOTP_TIMEOFFSET
+#define CONFIG_ZERO_BOOTDELAY_CHECK	/* check for keypress on bootdelay==0 */
 
 #define CONFIG_OF_LIBFDT
 #define CONFIG_CMDLINE_EDITING
