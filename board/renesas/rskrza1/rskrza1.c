@@ -335,9 +335,14 @@ int board_early_init_f(void)
 
 	/* The final step is to set the SDRAM Mode Register by written to a
 	   specific address (the data value is ignored) */
-	/* Check the hardware manual if your settings differ */
-	#define SDRAM_MODE_CS2 0x3FFFD040
-	#define SDRAM_MODE_CS3 0x3FFFE040
+	/* Check the hardware manual (table 8.15) if your settings differ */
+	/*   Burst Length = 1 (fixed)
+	 *   Burst Type = Sequential (fixed)
+	 *   CAS Latency = 2 or 3 (see table 8.15)
+	 *   Write Burst Mode = [burst read/single write] or [burst read/burst write] (see table 8.15)
+	 */
+	#define SDRAM_MODE_CS2 0x3FFFD040	/* CS2: CAS=2, burst write, 16bit bus */
+	#define SDRAM_MODE_CS3 0x3FFFE040	/* CS3: CAS=2, burst write, 16bit bus */
 	*(u32 *)SDRAM_MODE_CS2 = 0;
 	*(u32 *)SDRAM_MODE_CS3 = 0;
 
