@@ -1,0 +1,6 @@
+GRPEACH BOARD
+#M:	-
+S:	Maintained
+F:	board/renesas/grpeach/
+F:	include/configs/grpeach.h
+F:	configs/grpeach_defconfig

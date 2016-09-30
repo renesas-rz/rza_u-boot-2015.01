@@ -55,7 +55,7 @@ int spi_flash_cmd_write_status(struct spi_flash *flash, u8 ws)
 	return 0;
 }
 
-#if defined(CONFIG_SPI_FLASH_SPANSION) || defined(CONFIG_SPI_FLASH_WINBOND)
+#if defined(CONFIG_SPI_FLASH_SPANSION) || defined(CONFIG_SPI_FLASH_WINBOND) || defined(CONFIG_SPI_FLASH_MACRONIX) 
 int spi_flash_cmd_read_config(struct spi_flash *flash, u8 *rc)
 {
 	int ret;

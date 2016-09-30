@@ -7,6 +7,8 @@ config TARGET_GENMAI
        bool "GENMAI board"
 config TARGET_RSKRZA1
 	bool "RSK-RZA/1 board"
+config TARGET_GRPEACH
+	bool "GR-PEACH board"
 
 endchoice
 
@@ -15,5 +17,6 @@ config SYS_SOC
 
 source "board/renesas/genmai/Kconfig"
 source "board/renesas/rskrza1/Kconfig"
+source "board/renesas/grpeach/Kconfig"
 
 endif
