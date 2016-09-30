@@ -1,7 +1,5 @@
 #
-# Copyright (C) 2015 Renesas Electronics
-# Copyright (C) 2015 Chris Brandt
-# Copyright (C) 2015 Justin Waters
+# Copyright (C) 2016 Renesas Electronics
 #
 # SPDX-License-Identifier:	GPL-2.0+
 

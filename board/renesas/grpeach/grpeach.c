@@ -1,15 +1,12 @@
 /*
- * Copyright (C) 2008-2013 Renesas Solutions Corp.
- * Copyright (C) 2012 Renesas Electronics Europe Ltd.
- * Copyright (C) 2012 Phil Edworthy
- * Copyright (C) 2008 Nobuhiro Iwamatsu
- * Copyright (C) 2016 Jessie CHONG
- *
- * Based on u-boot/board/renesas/rskrza1/rskrza1.c
- *
- * This file is released under the terms of GPL v2 and any later version.
- * See the file COPYING in the root directory of the source tree for details.
- */
+* Copyright (C) 2016 Renesas Electronics
+*
+* Based on u-boot/board/renesas/rskrza1/rskrza1.c
+*
+* This file is released under the terms of GPL v2 and any later version.
+* See the file COPYING in the root directory of the source tree for details.
+*/
+
 
 #include <common.h>
 #include <asm/io.h>
