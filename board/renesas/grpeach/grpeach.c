@@ -7,7 +7,6 @@
 * See the file COPYING in the root directory of the source tree for details.
 */
 
-
 #include <common.h>
 #include <asm/io.h>
 #include <asm/processor.h>
@@ -159,8 +158,6 @@ int board_early_init_f(void)
 	   flash'). A temporary stack has been set up for us which is why we can
 	   have this as C code. */
 
-	int i;
-
 	rtc_reset();	/* to start rtc */
 
 	/* =========== Pin Setup =========== */
@@ -177,12 +174,6 @@ int board_early_init_f(void)
 	pfc_set_pin_function(9, 5, ALT2, 0, 1);	/* P9_5 = SPBIO10_0 (bi dir) */
 	pfc_set_pin_function(9, 6, ALT2, 0, 1);	/* P9_6 = SPBIO20_0 (bi dir) */
 	pfc_set_pin_function(9, 7, ALT2, 0, 1);	/* P9_7 = SPBIO30_0 (bi dir) */
-
-	/* QSPI_0 ch1 (4-bit interface for dual QSPI mode) */
-	pfc_set_pin_function(2, 12, ALT4, 0, 1); /* P2_12 = SPBIO01_0 (bi dir) */
-	pfc_set_pin_function(2, 13, ALT4, 0, 1); /* P2_13 = SPBIO11_0 (bi dir) */
-	pfc_set_pin_function(2, 14, ALT4, 0, 1); /* P2_14 = SPBIO21_0 (bi dir) */
-	pfc_set_pin_function(2, 15, ALT4, 0, 1); /* P2_15 = SPBIO31_0 (bi dir) */
 
 	/* RIIC Ch 3 */
 	pfc_set_pin_function(1, 6, ALT1, 0, 1);	/* P1_6 = RIIC3SCL (bi dir) */
@@ -212,106 +203,17 @@ int board_early_init_f(void)
 	pfc_set_gpio(3, 8, 0); /* P3_8 = GPIO, 0 */
 	pfc_set_port_0(3, 8);
 
-	/**********************************************/
-	/* Configure SDRAM (CS2, CS3)                 */
-	/**********************************************/
-	/* [[ RZ/A1H RSK BOARD ]]
-	* Note : This configuration is invalid for a single SDRAM and is a
-	*      : known limitation of the RSK+ board. The port pin used by
-	*      : CS3 is configured for LED0. To allow SDRAM operation CS2
-	*      : and CS3 must be configured to SDRAM. Option link R164 must
-	*      : NOT be fitted to avoid a Data Bus conflict on the SDRAM
-	*      : and expansion buffers. In a new application with one SDRAM
-	*      : always connect the SDRAM to CS3. On this RSK+ CS3 can not
-	*      : be used in another configuration including the expansion
-	*      : headers unless the SDRAM is completely disabled. For other
-	*      : external memory mapped devices CS1 is available for use
-	*      : with the expansion headers.
-	*      : See the hardware manual Bus State Controller
-	*/
-	/* Additionally, even though we are only using CS2, we need to set up
-	   the CS3 register becase some bits are common for CS3 and CS2 */
-
-	#define CS2BCR_D	0x00004C00
-	#define CS2WCR_D	0x00000480
-	#define CS3BCR_D	0x00004C00
-	#define CS3WCR_D	0x00004492
-	#define SDCR_D		0x00110811
-	#define RTCOR_D		0xA55A0080
-	#define RTCSR_D		0xA55A0008
-	*(u32 *)CS2BCR = CS2BCR_D;
-	*(u32 *)CS2WCR = CS2WCR_D;
-	*(u32 *)CS3BCR = CS3BCR_D;
-	*(u32 *)CS3WCR = CS3WCR_D;
-	*(u32 *)SDCR = SDCR_D;
-	*(u32 *)RTCOR = RTCOR_D;
-	*(u32 *)RTCSR = RTCSR_D;
-
-	/* wait */
-	#define REPEAT_D 0x000033F1
-	for (i=0;i<REPEAT_D;i++) {
-		asm("nop");
-	}
-
-	/* The final step is to set the SDRAM Mode Register by written to a
-	   specific address (the data value is ignored) */
-	/* Check the hardware manual if your settings differ */
-	#define SDRAM_MODE_CS2 0x3FFFD040
-	#define SDRAM_MODE_CS3 0x3FFFE040
-	*(u32 *)SDRAM_MODE_CS2 = 0;
-	*(u32 *)SDRAM_MODE_CS3 = 0;
-
 	return 0;
 }
 
 int board_late_init(void)
 {
+
 	u8 mac[6];
-	u8 tmp[1];
 
 	/* Read Mac Address and set*/
 	i2c_init(CONFIG_SYS_I2C_SPEED, 0);
 	i2c_set_bus_num(CONFIG_SYS_I2C_MODULE);
-
-	/*
-	 * PORT EXPANDER
-	 *
-	 * PX1.0  LED1             O  1  0=ON, 1=OFF
-	 * PX1.1  LED2             O  1  0=ON, 1=OFF
-	 * PX1.2  LED3             O  1  0=ON, 1=OFF
-	 * PX1.3  NOR_A25          O  0  Bit #25 of NOR Flash Addressing
-	 * PX1.4  PMOD1_RST        O  1  Reset for PMOD channel 1
-	 * PX1.5  PMOD2_RST        O  1  Reset for PMOD channel 2
-	 * PX1.6  SD_CONN_PWR_EN   O  0  Enable power supply for external SD card
-	 * PX1.7  SD_MMC_PWR_EN    O  1  Enable power supply for MMC card
-	 *
-	 * PX2.0  PX1_EN0          O  0  0=LCD, 1=DV
-	 * PX2.1  PX1_EN1          O  1  0=General Data, 1=Ethernet
-	 * PX2.2  TFT_CS           O  0  Chip select for TFT
-	 * PX2.3  PX1_EN3          O  0  0=PWM timer channels, 1=ADC/DAC I/O lines
-	 * PX2.4  USB_OVR_CURRENT  I  1  Signal from USB power controller (over-current)
-	 * PX2.5  USB_PWR_ENA      O  0  Enable power supply for USB channel 0
-	 * PX2.6  USB_PWR_ENB      O  0  Enable power supply for USB channel 1
-	 * PX2.7  PX1_EN7          O  0  0=A18-A21, 1=SGOUT0-SGOUT4
-	 */
-
-	/* init PX01(IC34) */
-	tmp[0] = 0x00;
-	i2c_write(0x20, 3, 1, tmp, 1); /* config */
-	tmp[0] = 0x37;
-	i2c_write(0x20, 1, 1, tmp, 1); /* output */
-
-	/*init PX02(IC35) */
-	tmp[0] = 0x10;
-	i2c_write(0x21, 3, 1, tmp, 1); /* config */
-	tmp[0] = 0x12;
-	i2c_write(0x21, 1, 1, tmp, 1); /* output */
-
-	/* Read MAC address */
-	i2c_read(CONFIG_SYS_I2C_EEPROM_ADDR,
-		 CONFIG_SH_ETHER_EEPROM_ADDR,
-		 CONFIG_SYS_I2C_EEPROM_ADDR_LEN,
-		 mac, 6);
 
 	if (is_valid_ether_addr(mac))
 		eth_setenv_enetaddr("ethaddr", mac);
@@ -333,8 +235,7 @@ int board_late_init(void)
 	setenv("xa1", "sf probe 0; sf read 20500000 C0000 8000");
 	/* Change memory address in DTB */
 	setenv("xa2", "fdt addr 20500000 ; fdt memory 0x20000000 0x00A00000"); /* 10MB RAM */
-	/* Change XIP interface to dual QSPI */
-	setenv("xa3", "qspi single"); /*"qspi dual"*/
+	setenv("xa3", "qspi single"); /*"qspi single"*/
 	setenv("xaargs", "console=ttySC2,9600 console=tty0 ignore_loglevel root=/dev/sda1 rootdelay=3 earlyprintk");
 	setenv("xa_boot", "run xa1 xa2 xa3; set bootargs ${xaargs}; fdt chosen; bootx 18200000 20500000"); // run the commands
 
@@ -411,7 +312,6 @@ U_BOOT_CMD(
 	"boot XIP kernel in Flash", bootx_help_text
 );
 
-
 #define CMNCR_0	0x3FEFA000	/* Common control register */
 #define DRCR_0	0x3FEFA00C	/* Data Read Control Register */
 #define DRCMR_0	0x3FEFA010	/* Data Read Command Setting Register */
@@ -420,7 +320,6 @@ U_BOOT_CMD(
 #define DROPR_0 0x3FEFA018	/* Data read option setting register */
 #define DMDMCR_0 0x3FEFA058	/* SPI Mode Dummy Cycle Setting Register */
 #define DRDRENR_0 0x3FEFA05C	/* Data Read DDR Enable Register */
-
 
 struct read_mode {
 	u8 cmd;
@@ -483,7 +382,7 @@ int enable_quad_macronix(struct spi_flash *sf, u8 quad_addr, u8 quad_data )
 	//ret |= spi_flash_cmd(sf->spi, 0x9F, &data[0], 5);
 
 	if (sf->spi->cs)
-		spi_cnt = 2; /* Dual SPI Flash */
+		spi_cnt = 1; /* Single SPI Flash */
 
 	/* Read Status register (RDSR1 05h) */
 	qspi_disable_auto_combine();
@@ -505,7 +404,7 @@ int enable_quad_macronix(struct spi_flash *sf, u8 quad_addr, u8 quad_data )
 	/* Skip SPI Flash configure if already correct */
 	/* Note that if dual SPI flash, both have to be set */
 	if ( (cfg_reg[0] != 0x02 ) ||
-	     ((spi_cnt == 2) && (cfg_reg[1] != 0x02 ))) {
+	     ((spi_cnt == 1) && (cfg_reg[1] != 0x02 ))) {
 
 		data[0] = 0x42; /* status reg: Don't Care */
 		data[1] = 0x00; /* confg reg: Set QUAD, LC=00b */
@@ -572,273 +471,6 @@ int enable_quad_macronix(struct spi_flash *sf, u8 quad_addr, u8 quad_data )
 	return ret; 
 }
 
-/**********************/
-/* Spansion S25FL512S */
-/**********************/
-int enable_quad_spansion(struct spi_flash *sf, u8 quad_addr, u8 quad_data )
-{
-	/* NOTE: Macronix and Windbond are similar to Spansion */
-	/* NOTE: Once quad comamnds are enabled, you don't need to disable
-		 them to use the non-quad mode commands, so we just always
-		 leave them on. */
-	int ret = 0;
-	u8 data[5];
-	u8 cmd;
-	u8 spi_cnt = 1;
-	u8 st_reg[2];
-	u8 cfg_reg[2];
-
-	/* Read ID Register (for cases where not all parts are the same) */
-	//ret |= spi_flash_cmd(sf->spi, 0x9F, &data[0], 5);
-
-	if (sf->spi->cs) 
-		spi_cnt = 2; /* Dual SPI Flash */
-
-	/* Read Status register (RDSR1 05h) */
-	qspi_disable_auto_combine();
-	ret |= spi_flash_cmd(sf->spi, 0x05, st_reg, 1*spi_cnt);
-
-	/* Read Configuration register (RDCR 35h) */
-	qspi_disable_auto_combine();
-	ret |= spi_flash_cmd(sf->spi, 0x35, cfg_reg, 1*spi_cnt); 
-
-#ifdef DEBUG
-	printf("Initial Values:\n");
-	for(cmd = 0; cmd <= spi_cnt; cmd++) {
-		printf("   SPI Flash %d:\n", cmd+1);
-		printf("\tStatus register = %02X\n", st_reg[cmd]);
-		printf("\tConfiguration register = %02X\n", cfg_reg[cmd]);
-	}
-#endif
-
-	/* Skip SPI Flash configure if already correct */
-	/* Note that if dual SPI flash, both have to be set */
-	if ( (cfg_reg[0] != 0x02 ) ||
-	     ((spi_cnt == 2) && (cfg_reg[1] != 0x02 ))) {
-
-		data[0] = 0x00;	/* status reg: Don't Care */
-		data[1] = 0x02; /* confg reg: Set QUAD, LC=00b */
-
-		/* Send Write Enable (WREN 06h) */
-		ret |= spi_flash_cmd(sf->spi, 0x06, NULL, 0);
-
-		/* Send Write Registers (WRR 01h) */
-		cmd = 0x01;
-		ret |= spi_flash_cmd_write(sf->spi, &cmd, 1, data, 2);
-		
-		/* Wait till WIP clears */
-		do
-		{
-			spi_flash_cmd(sf->spi, 0x05, &data[0], 1);
-		}
-		while( data[0] & 0x01 );
-
-	}
-
-#ifdef DEBUG
-	/* Read Status register (RDSR1 05h) */
-	qspi_disable_auto_combine();
-	ret |= spi_flash_cmd(sf->spi, 0x05, st_reg, 1*spi_cnt);
-
-	/* Read Configuration register (RDCR 35h) */
-	qspi_disable_auto_combine();
-	ret |= spi_flash_cmd(sf->spi, 0x35, cfg_reg, 1*spi_cnt); 
-
-	printf("New Values:\n");
-	for(cmd = 0; cmd <= spi_cnt; cmd++) {
-		printf("   SPI Flash %d:\n", cmd+1);
-		printf("\tStatus register = %02X\n", st_reg[cmd]);
-		printf("\tConfiguration register = %02X\n", cfg_reg[cmd]);
-	}
-#endif
-
-	/* Finally, fill out the global settings for
-	   Number of Dummy cycles between Address and Data */
-
-	/* Spansion S25FL512S */
-	/* According to the Spansion spec (Table 7.5), dummy cycles
-	   are needed when LC=00 (chip default) for FAST READ,
-	   QUAD READ, and QUAD I/O READ commands */
-	g_FAST_RD_DMY = 8;		/* Fast Read Mode: 8 cycles */ 
-	g_QUAD_RD_DMY = 8; 		/* Quad Read Mode  */
-	g_QUAD_IO_RD_DMY = 4;		/* Quad I/O Read Mode: 4 cycles */
-	g_QUAD_IO_DDR_RD_DMY = 6;	/* Quad I/O DDR Read Mode  (NOT SUPPORTED) */
-
-	/* When sending a QUAD I/O READ command, and extra MODE field
-	   is needed.
-	     [[ Single Data Rate, Quad I/O Read, Latency Code=00b ]]
-		<> command = 1-bit, 8 clocks
-		<> Addr(32bit) = 4-bit, 8 clocks,
-		<> Mode = 4-bit, 2 clocks
-		<> Dummy = 4-bit, 4 clocks
-		<> Data = 4-bit, 2 clocks x {length}
-	    See "Figure 10.37 Quad I/O Read Command Sequence" in Spansion spec
-	*/
-	/* Use Option data regsiters to output '0' as the
-	   'Mode' field by sending OPD3 (at 4-bit) between address
-	   and dummy */
-	g_QUAD_IO_RD_OPT = 1;
-
-	return ret; 
-}
-
-/*******************/
-/* Micron N25Q512A */
-/*******************/
-int enable_quad_micron(struct spi_flash *sf, u8 quad_addr, u8 quad_data )
-{
-/* NOTES:
-	To use the QUAD commands, you need to enable dummy cycles for
-	every type of FAST_READ command. While this is fine when the RZ-QSPI
-	is running in XIP mode, but when you switch back to SPI mode to use
-	something like "sf probe", it can't deal with those dummy cycles,
-	therefore, we need to remove the dummy cycles during each
-	"sf probe". See function qspi_reset_device().
-	It should be noted that if the RZ/A1 is rebooted in XIP mode
-	with those dummy cycles still enabled in the SPI flash, the reboot
-	will still work because the RZ/A1 uses the legacy READ (0x03) command
-	on reset, not FAST_READ */
-
-	int ret = 0;
-	u8 cmd;
-	u8 vcfg_reg[2];
-
-#ifdef DEBUG
-	u8 st_reg[2];
-	u16 nvcfg_reg[2];
-	u8 tmp;
-
-	/* Dual SPI Flash */
-	if (sf->spi->cs) {
-		/* Read Flag Status register (70h) */
-		qspi_disable_auto_combine();	/* only lasts 1 call */
-		ret |= spi_flash_cmd(sf->spi, 0x70, st_reg, 1*2);
-
-		/* Read NONVOLATILE Configuration register (B5h) */
-		qspi_disable_auto_combine();	/* only lasts 1 call */
-		ret |= spi_flash_cmd(sf->spi, 0xB5, nvcfg_reg, 2*2);
-
-		/* swap 2nd and 3rd bytes...becase data for each
-		   SPI flash comes in interleaved */
-		tmp = ((u8 *)nvcfg_reg)[1];
-		((u8 *)nvcfg_reg)[1] = ((u8 *)nvcfg_reg)[2];
-		((u8 *)nvcfg_reg)[2] = tmp;
-
-		/* Read VOLATILE Configuration register (85h) */
-		qspi_disable_auto_combine();	/* only lasts 1 call */
-		ret |= spi_flash_cmd(sf->spi, 0x85, vcfg_reg, 1*2);
-
-	}
-	else {
-		/* Read Flag Status register (70h) */
-		ret |= spi_flash_cmd(sf->spi, 0x70, st_reg, 1);
-
-		/* Read NONVOLATILE Configuration register (B5h) */
-		ret |= spi_flash_cmd(sf->spi, 0xB5, nvcfg_reg, 2);
-
-		/* Read VOLATILE Configuration register (85h) */
-		ret |= spi_flash_cmd(sf->spi, 0x85, vcfg_reg, 1);
-	}
-
-	printf("Initial Values:\n");
-	for(tmp = 0; tmp <= sf->spi->cs ;tmp++) {
-		printf("   SPI Flash %d:\n", tmp+1);
-		printf("\tStatus register = %02X\n", st_reg[tmp]);
-		printf("\tNonVolatile Configuration register = %04X\n", nvcfg_reg[tmp]);
-		printf("\tVolatile Configuration register = %02X\n", vcfg_reg[tmp]);
-	}
-#endif
-
-	/* To use the QUAD commands, we need dummy cycles after every
-	   FAST_READ and FAST_READ_xxx commands */
-	/* Send WRITE VOLATILE CONFIGURATION REGISTER (81h) */
-	cmd = 0x81;
-	if( quad_addr )
-		vcfg_reg[0] = 0x5B;	/* Quad IO: 5 dummy cycles */
-	else if( quad_data )
-		vcfg_reg[0] = 0x3B;	/* Quad Read: 3 dummy cycles */
-	else
-		vcfg_reg[0] = 0x0B;	/* FAST_READ: 0 dummy cycles */
-
-	ret |= spi_flash_cmd(sf->spi, 0x06, NULL, 0);	/* Send Write Enable (06h) */
-	ret |= spi_flash_cmd_write(sf->spi, &cmd, 1, vcfg_reg, 1); /* send same to both flash */
-
-#ifdef DEBUG
-	ret |= spi_flash_cmd(sf->spi, 0x70, st_reg, 1);
-	ret |= spi_flash_cmd(sf->spi, 0xB5, nvcfg_reg, 2);
-	ret |= spi_flash_cmd(sf->spi, 0x85, vcfg_reg, 1);
-	printf("New Values:\n");
-	for(tmp = 0; tmp<1;tmp++) {
-		printf("   SPI Flash %d:\n", tmp+1);
-		printf("\tStatus register = %02X\n", st_reg[tmp]);
-		printf("\tNonVolatile Configuration register = %04X\n", nvcfg_reg[tmp]);
-		printf("\tVolatile Configuration register = %02X\n", vcfg_reg[tmp]);
-	}
-#endif
-
-	/* Finally, fill out the global settings for
-	   Number of Dummy cycles between Address and data */
-
-	/* Assuming a 66MHz clock. Table 13 of n25q_512mb spec */
-	g_FAST_RD_DMY = 0;		/* Fast Read Mode: 0 cycles */
-	g_QUAD_RD_DMY = 3;		/* Quad Read Mode: 3 cycles  */
-	g_QUAD_IO_RD_DMY = 5;		/* Quad I/O Read Mode: 5 cycles  */
-
-	g_QUAD_IO_RD_OPT = 0;		/* Quad I/O Read Mode: no additonal cycles */
-
-	/* NOTE: This part can not run DDR at 66MHz */
-	g_QUAD_IO_DDR_RD_DMY = 0;	/* Quad I/O DDR Read Mode  */
-
-	/* HACK! */
-	if( quad_addr )
-	{
-		/* When in QUAD I/O mode, sometimes the data is not correct.
-		   It appears like the address gets corrupted. Therefore
-		   we need to slow down the SPI clock in this mode. */
-		/* This might be becase the board this code was devleopted on
-		   had lots of wire leads attached to the SPI flash pins */
-		#define	QSPI_SPBCR (0x0008)
-		*(u32 *)(CONFIG_RZA1_BASE_QSPI0 + QSPI_SPBCR) = 0x0300; /* 22.22 Mbps */
-		printf("\nINFO: clock is now 22.22Mbps (see function %s)\n\n",__func__);
-	}
-
-	return ret;
-}
-
-/* Dummy cycles are need for the quad mode FAST_READ commands,
-   but they get applied to ever type of FAST_READ command.
-   Since the "sf" commands in u-boot know nothing about dummy
-   cycles, we need to shut them off if we see a "sf probe" */
-int remove_dummy_micron(struct spi_flash *sf)
-{
-	int ret;
-	u8 cmd;
-	u8 cfg_reg;
-
-#ifdef DEBUG
-	/* Read VOLATILE Configuration register (85h) */
-	ret = spi_flash_cmd(sf->spi, 0x85, &cfg_reg, 1);
-	printf("%s: Initial Volatile Configuration register = %02X\n", __func__, cfg_reg);
-#endif
-
-	/* Send Write Enable (06h) */
-	ret = spi_flash_cmd(sf->spi, 0x06, NULL, 0);
-
-	/* Set Volatile Configuration Register to default value */
-	/* Send WRITE VOLATILE CONFIGURATION REGISTER (81h) */
-	cmd = 0x81;
-	cfg_reg = 0xFB;
-	ret |= spi_flash_cmd_write(sf->spi, &cmd, 1, &cfg_reg, 1);
-
-#ifdef DEBUG
-	/* Read Volatile Configuration register (85h) */
-	ret = spi_flash_cmd(sf->spi, 0x85, &cfg_reg, 1);
-	printf("%s: New Volatile Configuration register = %02X\n", __func__, cfg_reg);
-#endif
-
-	return ret;
-}
-
 /* This function is called when "sf probe" is issued, meaning that
    the user wants to access the deivce in normal single wire SPI mode.
    Since some SPI devices have to have special setups to enable QSPI mode
@@ -847,17 +479,10 @@ int remove_dummy_micron(struct spi_flash *sf)
 int qspi_reset_device(struct spi_flash *sf)
 {
 	int ret = 0;
-
-	if( !strcmp(sf->name, "S25FL512S_256K")) { 
+	
+	if (!strcmp(sf->name, "MX25L6405D")){ 
 		/* Don't really need to do anything */
-	}
-	else if (!strcmp(sf->name, "MX25L6405D")){ 
-		/* Don't really need to do anything */
-	}
-	else if( !strcmp(sf->name, "N25Q512") ) {
-		ret = remove_dummy_micron(sf);
-	}
-	else {
+	}else{
 		printf("\tWARNING: SPI Flash needs to be added to function %s()\n",__func__);
 		return 1;
 	}
@@ -883,8 +508,6 @@ int do_qspi(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 
 	if ( strcmp(argv[1], "single") == 0)
 		dual_chip = 0;
-	else if ( strcmp(argv[1], "dual") == 0)
-		dual_chip = 1;
 	else
 		goto usage;
 
@@ -937,9 +560,7 @@ int do_qspi(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 	}
 
 	/* bus=0, cs=0, speed=1000000 */
-	if( dual_chip )
-		my_spi_flash = spi_flash_probe(0, 1, 1000000, SPI_MODE_3);
-	else
+	if( dual_chip == 0)
 		my_spi_flash = spi_flash_probe(0, 0, 1000000, SPI_MODE_3);
 
 	if (!my_spi_flash) {
@@ -949,12 +570,8 @@ int do_qspi(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 
 	/* For Quad Mode operation, extra setup is needed in the SPI
 	   Flash devices */
-	if( !strcmp(my_spi_flash->name, "S25FL512S_256K"))
-		ret = enable_quad_spansion(my_spi_flash, quad_addr, quad_data);
-	else if(!strcmp(my_spi_flash->name, "MX25L6405D")) 
-		ret = enable_quad_macronix(my_spi_flash, quad_addr, quad_data);
-	else if( !strcmp(my_spi_flash->name, "N25Q512") )
-		ret = enable_quad_micron(my_spi_flash, quad_addr, quad_data);
+	if(!strcmp(my_spi_flash->name, "MX25L6405D")) 
+		ret = enable_quad_macronix(my_spi_flash, quad_addr, quad_data);	
 	else
 	{
 		printf("ERROR: SPI Flash support needs to be added to function %s()\n",__func__);
@@ -979,11 +596,7 @@ int do_qspi(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 	   regardless of how you fetched them over SPI */
 	cmncr |= 0x01000000UL;
 
-	if( dual_chip ) {
-		/* Switch to dual memory */
-		cmncr |= 0x00000001UL;
-	}
-	else {
+	if( dual_chip == 0) {
 		/* Switch to single memory */
 		cmncr &= ~0x00000001UL;
 	}
