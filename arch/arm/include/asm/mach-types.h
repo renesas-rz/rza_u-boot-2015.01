@@ -1110,7 +1110,7 @@ extern unsigned int __machine_arch_type;
 #define MACH_TYPE_APALIS_T30           4513
 #define MACH_TYPE_GENMAI               5010
 #define MACH_TYPE_RSKRZA1              4533
-#define MACH_TYPE_GRPEACH              4555
+#define MACH_TYPE_GRPEACH              5050
 
 #ifdef CONFIG_ARCH_EBSA110
 # ifdef machine_arch_type
