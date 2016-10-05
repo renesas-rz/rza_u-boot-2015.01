@@ -236,7 +236,7 @@ int board_late_init(void)
 	/* Change memory address in DTB */
 	setenv("xa2", "fdt addr 20500000 ; fdt memory 0x20000000 0x00A00000"); /* 10MB RAM */
 	setenv("xa3", "qspi single"); /*"qspi single"*/
-	setenv("xaargs", "console=ttySC2,9600 console=tty0 ignore_loglevel root=/dev/sda1 rootwait earlyprintk");
+	setenv("xaargs", "console=ttySC2,115200 console=tty0 ignore_loglevel root=/dev/sda1 rootwait earlyprintk");
 	setenv("xa_boot", "run xa1 xa2 xa3; set bootargs ${xaargs}; fdt chosen; bootx 18200000 20500000"); // run the commands
 
 	return 0;

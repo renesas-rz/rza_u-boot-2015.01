@@ -50,8 +50,8 @@
 # include <config_cmd_default.h>
 #endif
 
-#define CONFIG_BAUDRATE		9600
-#define CONFIG_BOOTARGS		"console=ttySC2,9600"
+#define CONFIG_BAUDRATE		115200
+#define CONFIG_BOOTARGS		"console=ttySC2,115200"
 #define CONFIG_IPADDR		192.168.0.55
 #define CONFIG_SERVERIP		192.168.0.1
 #define CONFIG_BOOTDELAY	3
