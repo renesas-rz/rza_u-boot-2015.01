@@ -606,6 +606,101 @@ u32 g_QUAD_IO_RD_DMY;		/* Quad I/O Read Mode  */
 u32 g_QUAD_IO_DDR_RD_DMY;	/* Quad I/O DDR Read Mode  */
 u32 g_QUAD_IO_RD_OPT;		/* Addtional option or 'mode' settings */
 
+/***********************/
+/* Macronix MX25L12845 */
+/***********************/
+int enable_quad_macronix(struct spi_flash *sf, u8 quad_addr, u8 quad_data )
+{
+	/* NOTE: This driver is reference from Spansion */
+	/* NOTE: Due to the Flash size <=16MB, it used  3-bytes of address */
+	/* NOTE: Once quad comamnds are enabled, you don't need to disable
+		 them to use the non-quad mode commands, so we just always
+		 leave them on. */
+	int ret = 0;
+	u8 data[5];
+	u8 cmd;
+	u8 spi_cnt = 1;
+	u8 st_reg[2];
+	u8 cfg_reg[2];
+
+	/* Read ID Register (for cases where not all parts are the same) */
+	//ret |= spi_flash_cmd(sf->spi, 0x9F, &data[0], 5);
+
+	if (sf->spi->cs)
+		spi_cnt = 2; /* Dual SPI Flash */
+
+	/* Read Status register (RDSR1 05h) */
+	qspi_disable_auto_combine();
+	ret |= spi_flash_cmd(sf->spi, 0x05, st_reg, 1*spi_cnt);
+
+	/* Read Configuration register (RDCR 15h) */
+	qspi_disable_auto_combine();
+	ret |= spi_flash_cmd(sf->spi, 0x15, cfg_reg, 1*spi_cnt);
+
+#ifdef DEBUG
+	printf("Initial Values:\n");
+	for(cmd = 0; cmd <= spi_cnt; cmd++) {
+		printf("   SPI Flash %d:\n", cmd+1);
+		printf("\tStatus register = %02X\n", st_reg[cmd]);
+		printf("\tConfiguration register = %02X\n", cfg_reg[cmd]);
+	}
+#endif
+
+	/* Skip SPI Flash configure if already correct */
+	/* Note that if dual SPI flash, both have to be set */
+	if ( (cfg_reg[0] != 0x02 ) ||
+	     ((spi_cnt == 2) && (cfg_reg[1] != 0x02 ))) {
+
+		data[0] = 0x40;	/* status reg: Set QUAD bit */
+		data[1] = 0x00; /* confg reg: Don't Care */
+
+		/* Send Write Enable (WREN 06h) */
+		ret |= spi_flash_cmd(sf->spi, 0x06, NULL, 0);
+
+		/* Send Write Registers (WRSR 01h) */
+		cmd = 0x01;
+		ret |= spi_flash_cmd_write(sf->spi, &cmd, 1, data, 2);
+
+		/* Wait till WIP clears */
+		do
+			spi_flash_cmd(sf->spi, 0x05, &data[0], 1);
+		while( data[0] & 0x01 );
+
+	}
+
+#ifdef DEBUG
+	/* Read Status register (RDSR1 05h) */
+	qspi_disable_auto_combine();
+	ret |= spi_flash_cmd(sf->spi, 0x05, st_reg, 1*spi_cnt);
+
+	/* Read Configuration register (RDCR 15h) */
+	qspi_disable_auto_combine();
+	ret |= spi_flash_cmd(sf->spi, 0x15, cfg_reg, 1*spi_cnt);
+
+	printf("New Values:\n");
+	for(cmd = 0; cmd <= spi_cnt; cmd++) {
+		printf("   SPI Flash %d:\n", cmd+1);
+		printf("\tStatus register = %02X\n", st_reg[cmd]);
+		printf("\tConfiguration register = %02X\n", cfg_reg[cmd]);
+	}
+#endif
+
+	/* Finally, fill out the global settings for
+	   Number of Dummy cycles between Address and Data */
+
+	/* Macronix MX25L12845 */
+	/* According to the Macronix spec (Table 5), dummy cycles
+	   are needed for FAST READ, QUAD READ, and QUAD I/O READ commands */
+	g_FAST_RD_DMY = 8;		/* Fast Read Mode: 8 cycles */
+	g_QUAD_RD_DMY = 8;		/* Quad Read Mode  */
+	g_QUAD_IO_RD_DMY = 6;		/* Quad I/O Read Mode: 6 cycles */
+	g_QUAD_IO_DDR_RD_DMY = 6;	/* Quad I/O DDR Read Mode  (NOT SUPPORTED) */
+
+	g_QUAD_IO_RD_OPT = 0; 		/* (NOT SUPPORTED) */
+
+	return ret;
+}
+
 /**********************/
 /* Spansion S25FL512S */
 /**********************/
@@ -883,11 +978,15 @@ int qspi_reset_device(struct spi_flash *sf)
 	if( !strcmp(sf->name, "S25FL512S_256K") ) {
 		/* Don't really need to do anything */
 	}
+	else if( !strcmp(sf->name, "MX25L12805") ) {
+	        /* Macronix and Windbond are similar to Spansion */
+		/* Don't really need to do anything */
+	}
 	else if( !strcmp(sf->name, "N25Q512") ) {
 		ret = remove_dummy_micron(sf);
 	}
 	else {
-		printf("\tWARNING: SPI Flash needs to be added to function %s()\n",__func__);
+		printf("\tWARNING: SPI Flash needs to be added to function %s() sf->name=%s\n",__func__, sf->name);
 		return 1;
 	}
 	return ret;
@@ -980,6 +1079,8 @@ int do_qspi(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 	   Flash devices */
 	if( !strcmp(my_spi_flash->name, "S25FL512S_256K") )
 		ret = enable_quad_spansion(my_spi_flash, quad_addr, quad_data);
+	else if( !strcmp(my_spi_flash->name, "MX25L12805") )
+		ret = enable_quad_macronix(my_spi_flash, quad_addr, quad_data);
 	else if( !strcmp(my_spi_flash->name, "N25Q512") )
 		ret = enable_quad_micron(my_spi_flash, quad_addr, quad_data);
 	else
