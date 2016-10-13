@@ -310,13 +310,17 @@ int board_early_init_f(void)
 	*      : See the hardware manual Bus State Controller
 	*/
 	/* Additionally, even though we are only using CS2, we need to set up
-	   the CS3 register becase some bits are common for CS3 and CS2 */
+	   the CS3 register CS3WCR because some bits are common for CS3 and CS2 */
 
-	#define CS2BCR_D	0x00004C00
-	#define CS2WCR_D	0x00000480
-	#define CS3BCR_D	0x00004C00
-	#define CS3WCR_D	0x00004492
-	#define SDCR_D		0x00110811
+	#define CS2BCR_D	0x00004C00	/* Type=SDRAM, 16-bit memory */
+	#define CS2WCR_D	0x00000480	/* CAS Latency = 2 */
+	#define CS3BCR_D	0x00004C00	/* Type=SDRAM, 16-bit memory */
+	#define CS3WCR_D	2 << 13	|	/* (CS2,CS3) WTRP (2 cycles) */\
+				1 << 10 |	/* (CS2,CS3) WTRCD (1 cycle) */\
+				1 <<  7 |	/*     (CS3) A3CL (CAS Latency = 2) */\
+				2 <<  3 |	/* (CS2,CS3) TRWL (2 cycles) */\
+				2 <<  0		/* (CS2,CS3) WTRC (5 cycles) */
+	#define SDCR_D		0x00110811	/* 13-bit row, 9-bit col, auto-refresh */
 	#define RTCOR_D		0xA55A0080
 	#define RTCSR_D		0xA55A0008
 	*(u32 *)CS2BCR = CS2BCR_D;
