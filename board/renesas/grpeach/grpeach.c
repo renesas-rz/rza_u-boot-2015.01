@@ -73,6 +73,11 @@ void pfc_set_port_0(u8 n, u8 b)
 	*(u16 *)Pn(n) = 0<<(b);	// data
 }
 
+void pfc_set_port_1(u8 n, u8 b)
+{
+	*(u16 *)Pn(n) = 1<<(b);	// data
+}
+
 /* Arguments:
     n = port number (P1-P11)
     b = bit number (0-15)
@@ -186,18 +191,21 @@ int board_early_init_f(void)
 	pfc_set_pin_function(3, 4, ALT2, 0, 0);	/* P3_4 = ET_RXCLK */
 	pfc_set_pin_function(3, 5, ALT2, 0, 0);	/* P3_5 = ET_RXER */
 	pfc_set_pin_function(3, 6, ALT2, 0, 0);	/* P3_6 = ET_RXDV */
-	pfc_set_pin_function(2, 0, ALT2, 0, 0);	/* P2_0 = ET_TXCLK */
-	pfc_set_pin_function(2, 1, ALT2, 0, 0);	/* P2_1 = ET_TXER */
-	pfc_set_pin_function(2, 2, ALT2, 0, 0);	/* P2_2 = ET_TXEN */
-	pfc_set_pin_function(2, 3, ALT2, 0, 0);	/* P2_3 = ET_CRS */
-	pfc_set_pin_function(2, 4, ALT2, 0, 0);	/* P2_4 = ET_TXD0 */
-	pfc_set_pin_function(2, 5, ALT2, 0, 0);	/* P2_5 = ET_TXD1 */
-	pfc_set_pin_function(2, 6, ALT2, 0, 0);	/* P2_6 = ET_TXD2 */
-	pfc_set_pin_function(2, 7, ALT2, 0, 0);	/* P2_7 = ET_TXD3 */
-	pfc_set_pin_function(2, 8, ALT2, 0, 0);	/* P2_8 = ET_RXD0 */
-	pfc_set_pin_function(2, 9, ALT2, 0, 0);	/* P2_9 = ET_RXD1 */
-	pfc_set_pin_function(2, 10, ALT2, 0, 0); /* P2_10 = ET_RXD2 */
-	pfc_set_pin_function(2, 11, ALT2, 0, 0); /* P2_11 = ET_RXD3 */
+	pfc_set_pin_function(3, 0, ALT2, 0, 0);	/* P2_0 = ET_TXCLK */
+	pfc_set_pin_function(10, 1, ALT4, 0, 0);/* P2_1 = ET_TXER */
+	pfc_set_pin_function(10, 2, ALT4, 0, 0);/* P2_2 = ET_TXEN */
+	pfc_set_pin_function(10, 3, ALT4, 0, 0);/* P2_3 = ET_CRS */
+	pfc_set_pin_function(10, 4, ALT4, 0, 0);/* P2_4 = ET_TXD0 */
+	pfc_set_pin_function(10, 5, ALT4, 0, 0);/* P2_5 = ET_TXD1 */
+	pfc_set_pin_function(10, 6, ALT4, 0, 0);/* P2_6 = ET_TXD2 */
+	pfc_set_pin_function(10, 7, ALT4, 0, 0);/* P2_7 = ET_TXD3 */
+	pfc_set_pin_function(10, 8, ALT4, 0, 0);/* P2_8 = ET_RXD0 */
+	pfc_set_pin_function(10, 9, ALT4, 0, 0);/* P2_9 = ET_RXD1 */
+	pfc_set_pin_function(10, 10, ALT4, 0, 0);/* P2_10 = ET_RXD2 */
+	pfc_set_pin_function(10, 11, ALT4, 0, 0);/* P2_11 = ET_RXD3 */
+	pfc_set_gpio(4, 2, 0); /* P4_2 = GPIO, 0 */
+	pfc_set_port_0(4, 2);
+	pfc_set_port_1(4, 2);
 	//pfc_set_pin_function(4, 14, ALT8, 0, 0); /* P4_14 = IRQ6 (ET_IRQ) */ /* NOTE: u-boot doesn't enable interrupts */
 
 	pfc_set_gpio(3, 8, 0); /* P3_8 = GPIO, 0 */
