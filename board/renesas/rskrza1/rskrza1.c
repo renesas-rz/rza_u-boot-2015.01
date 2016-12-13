@@ -480,6 +480,18 @@ int dram_init(void)
 
 void reset_cpu(ulong addr)
 {
+	/* If you have board specific stuff to do, you can do it
+	here before you reboot */
+
+	/* Dummy read (must read WRCSR:WOVF at least once before clearing) */
+	*(volatile u8 *)(WRCSR) = *(u8 *)(WRCSR);
+
+	*(volatile u16 *)(WRCSR) = 0xA500;     /* Clear WOVF */
+	*(volatile u16 *)(WRCSR) = 0x5A5F;     /* Reset Enable */
+	*(volatile u16 *)(WTCNT) = 0x5A00;     /* Counter to 00 */
+	*(volatile u16 *)(WTCSR) = 0xA578;     /* Start timer */
+
+	while(1); /* Wait for WDT overflow */
 }
 
 void led_set_state(unsigned short value)
