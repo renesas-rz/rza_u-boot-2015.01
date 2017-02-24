@@ -488,9 +488,13 @@ int qspi_reset_device(struct spi_flash *sf)
 {
 	int ret = 0;
 	
-	if (!strcmp(sf->name, "MX25L6405D")){ 
+	if (!strcmp(sf->name, "MX25L6405D")) {
 		/* Don't really need to do anything */
-	}else{
+	}
+	if (!strcmp(sf->name, "MX25L12805")) {
+		/* Don't really need to do anything */
+	}
+	else {
 		printf("\tWARNING: SPI Flash needs to be added to function %s()\n",__func__);
 		return 1;
 	}
@@ -580,6 +584,8 @@ int do_qspi(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 	   Flash devices */
 	if(!strcmp(my_spi_flash->name, "MX25L6405D")) 
 		ret = enable_quad_macronix(my_spi_flash, quad_addr, quad_data);	
+	else if(!strcmp(my_spi_flash->name, "MX25L12805"))
+		ret = enable_quad_macronix(my_spi_flash, quad_addr, quad_data);
 	else
 	{
 		printf("ERROR: SPI Flash support needs to be added to function %s()\n",__func__);
