@@ -233,8 +233,20 @@ int board_late_init(void)
 	printf(	"\t\tu-boot:  0x%08X 0x%06X 0\n", 0,CONFIG_ENV_OFFSET);
 	printf(	"\t\t   env:  0x%08X 0x%06X 0\n", CONFIG_ENV_OFFSET, CONFIG_ENV_SIZE);
 	printf(	"\t\t    DT:  0x%08X 0x%06X 0\n", CONFIG_ENV_OFFSET+CONFIG_ENV_SIZE,CONFIG_ENV_SECT_SIZE);
-	printf(	"\t\tKernel:  0x%08X 0x%06X 0+1 (size*=2)\n",0x100000, 0x280000);
+	printf(	"\t\tKernel:  0x%08X 0x%06X 0\n",0x100000, 0x50000);
+	printf(	"\t\tRootfs:  0x%08X 0x%06X 0\n",0x600000, 0xA0000);
 #endif
+
+	/* Boot XIP using internal RAM */
+	/* Rootfs is a on USB Flash drive */
+	/* => run xu_boot */
+	/* Read out DT blob */
+	setenv("xu1", "sf probe 0; sf read 20500000 C0000 8000");
+	/* Change memory address in DTB */
+	setenv("xu2", "fdt addr 20500000 ; fdt memory 0x20000000 0x00A00000"); /* 10MB RAM */
+	setenv("xu3", "qspi single");
+	setenv("xuargs", "console=ttySC2,115200 console=tty0 ignore_loglevel root=/dev/sda1 rootwait earlyprintk rz_irq_trim");
+	setenv("xu_boot", "run xu1 xu2 xu3; set bootargs ${xuargs}; fdt chosen; bootx 18100000 20500000"); // run the commands
 
 	/* Boot XIP using internal RAM */
 	/* Rootfs is a AXFS image in memory mapped QSPI */
@@ -243,9 +255,9 @@ int board_late_init(void)
 	setenv("xa1", "sf probe 0; sf read 20500000 C0000 8000");
 	/* Change memory address in DTB */
 	setenv("xa2", "fdt addr 20500000 ; fdt memory 0x20000000 0x00A00000"); /* 10MB RAM */
-	setenv("xa3", "qspi single"); /*"qspi single"*/
-	setenv("xaargs", "console=ttySC2,115200 console=tty0 ignore_loglevel root=/dev/sda1 rootwait earlyprintk");
-	setenv("xa_boot", "run xa1 xa2 xa3; set bootargs ${xaargs}; fdt chosen; bootx 18200000 20500000"); // run the commands
+	setenv("xa3", "qspi single");
+	setenv("xaargs", "console=ttySC2,115200 console=tty0 ignore_loglevel root=/dev/null rootflags=physaddr=0x18600000 earlyprintk rz_irq_trim");
+	setenv("xa_boot", "run xa1 xa2 xa3; set bootargs ${xaargs}; fdt chosen; bootx 18100000 20500000"); // run the commands
 
 	return 0;
 }
