@@ -185,9 +185,9 @@ int board_early_init_f(void)
 	pfc_set_pin_function(2, 14, ALT4, 0, 1); /* P2_14 = SPBIO21_0 (bi dir) */
 	pfc_set_pin_function(2, 15, ALT4, 0, 1); /* P2_15 = SPBIO31_0 (bi dir) */
 
-	/* RIIC Ch 3 */
-	pfc_set_pin_function(1, 6, ALT1, 0, 1);	/* P1_6 = RIIC3SCL (bi dir) */
-	pfc_set_pin_function(1, 7, ALT1, 0, 1);	/* P1_7 = RIIC3SDA (bi dir) */
+	/* RIIC Ch 2 (EEPROM) */
+	pfc_set_pin_function(1, 4, ALT1, 0, 1);	/* P1_4 = RIIC2SCL (bi dir) */
+	pfc_set_pin_function(1, 5, ALT1, 0, 1);	/* P1_5 = RIIC2SDA (bi dir) */
 
 	/* Ethernet */
 	pfc_set_pin_function(1, 14, ALT4, 0, 0); /* P1_14 = ET_COL */
@@ -288,7 +288,6 @@ int board_early_init_f(void)
 int board_late_init(void)
 {
 	u8 mac[6];
-	u8 tmp[1];
 
 	/* Read Mac Address and set*/
 	i2c_init(CONFIG_SYS_I2C_SPEED, 0);
