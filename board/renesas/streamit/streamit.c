@@ -252,6 +252,10 @@ int board_early_init_f(void)
 	pfc_set_pin_function(1, 0, ALT1, 0, 1);	/* P1_0 = RIIC3SCL (bi dir) */
 	pfc_set_pin_function(1, 1, ALT1, 0, 1);	/* P1_1 = RIIC3SDA (bi dir) */
 
+	/* Enable USB 5 Volt supply */
+	pfc_set_gpio(7, 1, GPIO_OUT); /* P7_1 = GPIO_OUT */
+	gpio_set(7, 1, 1);
+
 	/* Ethernet */
 	pfc_set_pin_function(8, 14, ALT2, 0, 0); /* P8_14 = ET_COL */
 	pfc_set_pin_function(9, 0, ALT2, 0, 0);	/* P9_0 = ET_MDC */
