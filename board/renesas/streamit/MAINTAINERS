@@ -1,0 +1,6 @@
+STREAMIT BOARD
+#M:	-
+S:	Maintained
+F:	board/renesas/streamit/
+F:	include/configs/streamit.h
+F:	configs/streamit_defconfig

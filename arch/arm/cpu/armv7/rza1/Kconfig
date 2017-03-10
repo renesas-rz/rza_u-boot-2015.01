@@ -3,6 +3,8 @@ if RZA1
 choice
 	prompt "Renesas RZ/A1H ARM SoCs board select"
 
+config TARGET_STREAMIT
+	bool "Stream it! board"
 config TARGET_GRPEACH
 	bool "GR-PEACH board"
 config TARGET_GENMAI
@@ -15,6 +17,7 @@ endchoice
 config SYS_SOC
 	default "rza1"
 
+source "board/renesas/streamit/Kconfig"
 source "board/renesas/grpeach/Kconfig"
 source "board/renesas/genmai/Kconfig"
 source "board/renesas/rskrza1/Kconfig"

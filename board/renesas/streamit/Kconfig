@@ -1,0 +1,12 @@
+if TARGET_STREAMIT
+
+config SYS_BOARD
+	default "streamit"
+
+config SYS_VENDOR
+	default "renesas"
+
+config SYS_CONFIG_NAME
+	default "streamit"
+
+endif
