@@ -64,19 +64,41 @@ const u32 alt_settings[9][3] = {
 */
 void pfc_set_gpio(u8 n, u8 b, u8 d)
 {
-	*(u32 *)PMCSRn(n) = 1UL<<(b+16);	// Pin as GPIO
-	*(u32 *)PSRn(n) = 1UL<<(b+16) | (u32)d<< b;	// Set direction
+	*(u32 *)PMCSRn(n) = 1UL<<(b+16);		// Pin as GPIO
+	*(u32 *)PMSRn(n) = 1UL<<(b+16) | (u32)d << b;	// Set pin IN/OUT
+
+	if( d == GPIO_IN )
+		*(u16 *)PIBCn(n) |= 1UL << b; 		// Enable input buffer
+	else
+		*(u16 *)PIBCn(n) &= ~(1UL << b); 	// Disable input buffer
 }
 
-void pfc_set_port_0(u8 n, u8 b)
+/* Arguments:
+   n = port(1-11)
+   b = bit(0-15)
+   v = value (0 or 1)
+*/
+void gpio_set(u8 n, u8 b, u8 v)
 {
-	*(u16 *)Pn(n) = 0<<(b);	// data
+	/* The pin should have been configured as GPIO_OUT using pfc_set_gpio */
+
+	/* Use the 'Port Set and Reset Register' to only effect the pin bit */
+	/* Upper WORD is the bit mask, the lower WORD is the desire pin level */
+	*(u32 *)PSRn(n) = 1UL<<(b+16) | (u32)v<< b;	// Set pin to 0/1
 }
 
-void pfc_set_port_1(u8 n, u8 b)
+/* Arguments:
+   n = port(1-11)
+   b = bit(0-15)
+   return = current pin level (0 or 1);
+*/
+u8 gpio_read(u8 n, u8 b)
 {
-	*(u16 *)Pn(n) = 1<<(b);	// data
+	/* The pin should have been configured as GPIO_IN using pfc_set_gpio */
+	//printf("PPRn(%d) %04X\n",n,*(u16 *)PPRn(n));
+	return ( *(u16 *)PPRn(n) >> b ) & 0x0001;
 }
+
 
 /* Arguments:
     n = port number (P1-P11)
@@ -203,13 +225,26 @@ int board_early_init_f(void)
 	pfc_set_pin_function(10, 9, ALT4, 0, 0);/* P2_9 = ET_RXD1 */
 	pfc_set_pin_function(10, 10, ALT4, 0, 0);/* P2_10 = ET_RXD2 */
 	pfc_set_pin_function(10, 11, ALT4, 0, 0);/* P2_11 = ET_RXD3 */
-	pfc_set_gpio(4, 2, 0); /* P4_2 = GPIO, 0 */
-	pfc_set_port_0(4, 2);
-	pfc_set_port_1(4, 2);
 	//pfc_set_pin_function(4, 14, ALT8, 0, 0); /* P4_14 = IRQ6 (ET_IRQ) */ /* NOTE: u-boot doesn't enable interrupts */
 
-	pfc_set_gpio(3, 8, 0); /* P3_8 = GPIO, 0 */
-	pfc_set_port_0(3, 8);
+	/* Ethernet - GPIO toggle reset*/
+	pfc_set_gpio(4, 2, GPIO_OUT); /* P4_2 = GPIO, 0 */
+	gpio_set(4, 2, 0);
+	gpio_set(4, 2, 1);
+
+	/* USB - Enable 5v VBUS supply */
+	pfc_set_gpio(4, 1, GPIO_OUT); /* P4_2 = GPIO, 0 */
+	gpio_set(4, 1, 0);
+
+	/* LEDs */
+	pfc_set_gpio(6, 12, GPIO_OUT); /* P6_12 = LED_USER */
+	gpio_set(6, 12, 1);	/* LED_USER ON */
+	pfc_set_gpio(6, 13, GPIO_OUT); /* P6_13 = LED_R */
+	gpio_set(6, 13, 0);	/* LED_R OFF */
+	pfc_set_gpio(6, 14, GPIO_OUT); /* P6_14 = LED_G */
+	gpio_set(6, 14, 0);	/* LED_G OFF */
+	pfc_set_gpio(6, 15, GPIO_OUT); /* P6_15 = LED_B */
+	gpio_set(6, 15, 0);	/* LED_B OFF */
 
 	return 0;
 }
@@ -258,6 +293,8 @@ int board_late_init(void)
 	setenv("xa3", "qspi single");
 	setenv("xaargs", "console=ttySC2,115200 console=tty0 ignore_loglevel root=/dev/null rootflags=physaddr=0x18600000 earlyprintk rz_irq_trim");
 	setenv("xa_boot", "run xa1 xa2 xa3; set bootargs ${xaargs}; fdt chosen; bootx 18100000 20500000"); // run the commands
+
+	gpio_set(6, 12, 0);	/* LED_USER OFF */
 
 	return 0;
 }
