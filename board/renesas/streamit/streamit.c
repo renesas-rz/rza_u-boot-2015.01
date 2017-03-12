@@ -277,6 +277,10 @@ int board_early_init_f(void)
 	pfc_set_pin_function(8, 10, ALT2, 0, 0); /* P2_10 = ET_RXD3 */
 	//pfc_set_pin_function(4, 14, ALT8, 0, 0); /* P4_14 = IRQ6 (ET_IRQ) */ /* NOTE: u-boot doesn't enable interrupts */
 
+	/* Release Ethernet from reset  */
+	pfc_set_gpio(2, 7, GPIO_OUT); /* P2_7 = GPIO_OUT */
+	gpio_set(2, 7, 1);
+
 	/* SDRAM */
 	pfc_set_pin_function(2, 0, ALT1, 0, 0);	/* P2_0 = CS3 */
 	for(i=0;i<=15;i++)
