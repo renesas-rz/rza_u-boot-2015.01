@@ -1,0 +1,6 @@
+YLCDRZA1H BOARD
+#M:	-
+S:	Maintained
+F:	board/renesas/rskrza1/
+F:	include/configs/rskrza1.h
+F:	configs/rskrza1_defconfig

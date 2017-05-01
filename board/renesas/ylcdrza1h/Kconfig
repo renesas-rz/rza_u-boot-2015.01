@@ -1,0 +1,12 @@
+if TARGET_YLCDRZA1H
+
+config SYS_BOARD
+	default "ylcdrza1h"
+
+config SYS_VENDOR
+	default "renesas"
+
+config SYS_CONFIG_NAME
+	default "ylcdrza1h"
+
+endif

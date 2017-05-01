@@ -1108,6 +1108,7 @@ extern unsigned int __machine_arch_type;
 #define MACH_TYPE_KZM9G                4140
 #define MACH_TYPE_COLIBRI_T30          4493
 #define MACH_TYPE_APALIS_T30           4513
+#define MACH_TYPE_YLCDRZA1H            5052
 #define MACH_TYPE_STREAMIT             5051
 #define MACH_TYPE_GRPEACH              5050
 #define MACH_TYPE_GENMAI               5010
@@ -14263,6 +14264,18 @@ extern unsigned int __machine_arch_type;
 # define machine_is_apalis_t30()	(machine_arch_type == MACH_TYPE_APALIS_T30)
 #else
 # define machine_is_apalis_t30()	(0)
+#endif
+
+#ifdef CONFIG_MACH_YLCDRZA1H
+# ifdef machine_arch_type
+#  undef machine_arch_type
+#  define machine_arch_type	__machine_arch_type
+# else
+#  define machine_arch_type	MACH_TYPE_YLCDRZA1H
+# endif
+# define machine_is_ylcdrza1h()	(machine_arch_type == MACH_TYPE_YLCDRZA1H)
+#else
+# define machine_is_ylcdrza1h()	(0)
 #endif
 
 #ifdef CONFIG_MACH_STREAMIT
