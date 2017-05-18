@@ -291,8 +291,13 @@ int board_early_init_f(void)
 	pfc_set_pin_function(2, 6, ALT1, 0, 0);	/* P2_6 = RD/WR */
 	pfc_set_pin_function(2, 4, ALT1, 0, 0);	/* P2_4 = WE0/DQMLL */
 	pfc_set_pin_function(2, 5, ALT1, 0, 0);	/* P2_5 = WE1/DQMLU */
+#ifdef CONFIG_STREAMIT_V2
+	for(i=0;i<=14;i++)
+		pfc_set_pin_function(3, i, ALT1, 0, 0);	/* P3_0~14: A1-A15 */
+#else
 	for(i=0;i<=13;i++)
 		pfc_set_pin_function(3, i, ALT1, 0, 0);	/* P3_0~13: A1-A14 */
+#endif
 
 	/* RED LED */
 	pfc_set_gpio(7, 8, GPIO_OUT); /* P7_8 = GPIO_OUT */
@@ -304,14 +309,11 @@ int board_early_init_f(void)
 	/* Configure SDRAM (CS3)                      */
 	/**********************************************/
 	/*
-	 * ISSI 128Mb SYNCHRONOUS DRAM (16MByte)
-	 * IS42/45S16800F
-	 * 2M x 16 x 4 Banks
-	 * 
-	 * NOTE: Because the Stream it board was laid out for a 32MB SDRAM chip, the BA1 pin (pin 21)
-	 * on the SDRAM chip needs to be lifted and then jumpered to its A12 (pin 36) so that it can be
-	 * connected to the RZ's A13 signal. Pin 36 on this SDRAM chip is a NC, so driving it with A13 is
-	 * not an issue.
+	 * NOTE: Because the Stream it board was laid out for a 32MB SDRAM chip, when using a 16MB chip
+	 * the BA1 pin (pin 21) on the SDRAM needs to be lifted and then jumpered to its A12 (pin 36)
+	 * so that it can be connected to the RZ's A13 signal. Pin 36 on this SDRAM chip is a NC, so
+	 * driving it with A13 is not an issue.
+	 *
 	 * Using a 16MB SDRAM instead of a 32MB SDRAM has the benefit of freeing up the CEU clock (VIO_CLK)
 	 * that is shared with the A15 signal on port P3_14.
 	 */
@@ -319,12 +321,32 @@ int board_early_init_f(void)
 //	#define CS2BCR_D	0x00004C00	/* Type=SDRAM, 16-bit memory */
 //	#define CS2WCR_D	0x00000480	/* CAS Latency = 2 */
 	#define CS3BCR_D	0x00004C00	/* Type=SDRAM, 16-bit memory */
+
+#ifndef CONFIG_STREAMIT_V2
+	/* StreamIt V1:
+	 *   ISSI 128Mb SYNCHRONOUS DRAM (16MByte)
+	 *   IS42/45S16800F
+	 *   2M x 16 x 4 Banks
+	 */
 	#define CS3WCR_D	2 << 13	|	/* (CS2,CS3) WTRP (2 cycles) */\
 				2 << 10 |	/* (CS2,CS3) WTRCD (2 cycles) */\
 				1 <<  7 |	/*     (CS3) A3CL (CAS Latency = 2) */\
 				2 <<  3 |	/* (CS2,CS3) TRWL (2 cycles) */\
 				3 <<  0		/* (CS2,CS3) WTRC (8 cycles) */
-	#define SDCR_D		0x00090809	/* 12-bit row, 9-bit col, auto-refresh */
+	#define SDCR_D	0x00090809	/* 12-bit row, 9-bit col, auto-refresh */
+#else
+	/* StreamIt V2:
+	 *   winbond 256Mb SYNCHRONOUS DRAM (32MByte)
+	 *   W9825G6KH-6I
+	 *   4M x 16 x 4 Banks
+	 */
+	#define CS3WCR_D	2 << 13	|	/* (CS2,CS3) WTRP (2 cycles) */\
+				2 << 10 |	/* (CS2,CS3) WTRCD (2 cycles) */\
+				2 <<  7 |	/*     (CS3) A3CL (CAS Latency = 3) */\
+				2 <<  3 |	/* (CS2,CS3) TRWL (2 cycles) */\
+				3 <<  0		/* (CS2,CS3) WTRC (8 cycles) */
+	#define SDCR_D	0x00090811	/* 13-bit row, 9-bit col, auto-refresh */
+#endif
 
 	/*
 	 * You must refresh all rows within the amount of time specified in the memory spec.
@@ -357,7 +379,11 @@ int board_early_init_f(void)
 	 *   Write Burst Mode = [burst read/single write] or [burst read/burst write] (see table 8.15)
 	 */
 //	#define SDRAM_MODE_CS2 0x3FFFD040	/* CS2: CAS=2, burst write, 16bit bus */
-	#define SDRAM_MODE_CS3 0x3FFFE040	/* CS3: CAS=2, burst write, 16bit bus */
+#ifndef CONFIG_STREAMIT_V2
+	#define SDRAM_MODE_CS3  0x3FFFE040	/* CS3: CAS=2, burst write, 16bit bus */
+#else
+	#define SDRAM_MODE_CS3  0x3FFFE060	/* CS3: CAS=3, burst write, 16bit bus */
+#endif
 //	*(u32 *)SDRAM_MODE_CS2 = 0;
 	*(u32 *)SDRAM_MODE_CS3 = 0;
 
@@ -682,6 +708,115 @@ int enable_quad_spansion(struct spi_flash *sf, u8 quad_addr, u8 quad_data )
 	return ret;
 }
 
+/************************/
+/* Macronix MX25L51235F */
+/************************/
+int enable_quad_macronix(struct spi_flash *sf, u8 quad_addr, u8 quad_data )
+{
+	/* NOTE: Macronix and Windbond are similar to Spansion */
+	/* NOTE: Once quad comamnds are enabled, you don't need to disable
+		 them to use the non-quad mode commands, so we just always
+		 leave them on. */
+	int ret = 0;
+	u8 data[5];
+	u8 cmd;
+	u8 spi_cnt = 1;
+	u8 st_reg[2];
+	u8 cfg_reg[2];
+
+	/* Read ID Register (for cases where not all parts are the same) */
+	//ret |= spi_flash_cmd(sf->spi, 0x9F, &data[0], 5);
+
+	if (sf->spi->cs)
+		spi_cnt = 1; /* Single SPI Flash */
+
+	/* Read Status register (RDSR1 05h) */
+	qspi_disable_auto_combine();
+	ret |= spi_flash_cmd(sf->spi, 0x05, st_reg, 1*spi_cnt);
+
+	/* Read Configuration register (RDCR 35h) */
+	qspi_disable_auto_combine();
+	ret |= spi_flash_cmd(sf->spi, 0x35, cfg_reg, 1*spi_cnt);
+
+#ifdef DEBUG
+	printf("Initial Values:\n");
+	for(cmd = 0; cmd <= spi_cnt; cmd++) {
+		printf("   SPI Flash %d:\n", cmd+1);
+		printf("\tStatus register = %02X\n", st_reg[cmd]);
+		printf("\tConfiguration register = %02X\n", cfg_reg[cmd]);
+	}
+#endif
+
+	/* Skip SPI Flash configure if already correct */
+	/* Note that if dual SPI flash, both have to be set */
+	if ( (cfg_reg[0] != 0x02 ) ||
+	     ((spi_cnt == 1) && (cfg_reg[1] != 0x02 ))) {
+
+		data[0] = 0x42; /* status reg: Don't Care */
+		data[1] = 0x00; /* confg reg: Set QUAD, LC=00b */
+
+		/* Send Write Enable (WREN 06h) */
+		ret |= spi_flash_cmd(sf->spi, 0x06, NULL, 0);
+
+		/* Send Write Registers (WRR 01h) */
+		cmd = 0x01;
+		ret |= spi_flash_cmd_write(sf->spi, &cmd, 1, data, 2);
+
+		/* Wait till WIP clears */
+		do
+		{
+			spi_flash_cmd(sf->spi, 0x05, &data[0], 1);
+		}
+		while( data[0] & 0x01 );
+	}
+
+#ifdef DEBUG
+	/* Read Status register (RDSR1 05h) */
+	qspi_disable_auto_combine();
+	ret |= spi_flash_cmd(sf->spi, 0x05, st_reg, 1*spi_cnt);
+
+	/* Read Configuration register (RDCR 35h) */
+	qspi_disable_auto_combine();
+	ret |= spi_flash_cmd(sf->spi, 0x35, cfg_reg, 1*spi_cnt);
+
+	printf("New Values:\n");
+	for(cmd = 0; cmd <= spi_cnt; cmd++) {
+		printf("   SPI Flash %d:\n", cmd+1);
+		printf("\tStatus register = %02X\n", st_reg[cmd]);
+		printf("\tConfiguration register = %02X\n", cfg_reg[cmd]);
+	}
+#endif
+
+	/* Finally, fill out the global settings for
+	   Number of Dummy cycles between Address and Data */
+
+	/* Macronix MX25L6405D */
+	/* According to the Macronix spec (Table 7.5), dummy cycles
+	   are needed when LC=00 (chip default) for FAST READ,
+	   QUAD READ, and QUAD I/O READ commands */
+	g_FAST_RD_DMY = 8;		/* Fast Read Mode: 8 cycles */
+	g_QUAD_RD_DMY = 6; 		/* Quad Read Mode  */
+	g_QUAD_IO_RD_DMY = 6;		/* Quad I/O Read Mode: 6 cycles */
+	g_QUAD_IO_DDR_RD_DMY = 6;	/* Quad I/O DDR Read Mode  (NOT SUPPORTED) */
+
+	/* When sending a QUAD I/O READ command, and extra MODE field
+	   is needed.
+	     [[ Single Data Rate, Quad I/O Read, Latency Code=00b ]]
+		<> command = 1-bit, 8 clocks
+		<> Addr(32bit) = 4-bit, 8 clocks,
+		<> Mode = 4-bit, 2 clocks
+		<> Dummy = 4-bit, 4 clocks
+		<> Data = 4-bit, 2 clocks x {length}
+	    See "Figure 10.37 Quad I/O Read Command Sequence" in Macronix spec
+	*/
+	/* Use Option data regsiters to output '0' as the
+	   'Mode' field by sending OPD3 (at 4-bit) between address
+	   and dummy */
+	g_QUAD_IO_RD_OPT = 0;
+
+	return ret;
+}
+
 /* This function is called when "sf probe" is issued, meaning that
    the user wants to access the deivce in normal single wire SPI mode.
    Since some SPI devices have to have special setups to enable QSPI mode
@@ -693,10 +828,16 @@ int qspi_reset_device(struct spi_flash *sf)
 
 	if( !strcmp(sf->name, "S25FL512S_256K") ) {
 		/* Don't really need to do anything */
+#ifdef CONFIG_STREAMIT_V2
+		printf("\nERROR: Stream It V1 board detected! Update #define in streamit.h\n\n");
+#endif
 	}
-	else if( !strcmp(sf->name, "MX25L12805") ) {
+	else if( !strcmp(sf->name, "MX25L51235F") ) {
 	        /* Macronix and Windbond are similar to Spansion */
 		/* Don't really need to do anything */
+#ifndef CONFIG_STREAMIT_V2
+		printf("\nERROR: Stream It V2 board detected! Update #define in streamit.h\n\n");
+#endif
 	}
 	else if( !strcmp(sf->name, "N25Q512") ) {
 		//ret = remove_dummy_micron(sf);
@@ -796,8 +937,8 @@ int do_qspi(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 	if( !strcmp(my_spi_flash->name, "S25FL512S_256K") ) {
 		ret = enable_quad_spansion(my_spi_flash, quad_addr, quad_data);
 	}
-	else if( !strcmp(my_spi_flash->name, "MX25L12805") ) {
-		//ret = enable_quad_macronix(my_spi_flash, quad_addr, quad_data);
+	else if( !strcmp(my_spi_flash->name, "MX25L51235F") ) {
+		ret = enable_quad_macronix(my_spi_flash, quad_addr, quad_data);
 	}
 	else if( !strcmp(my_spi_flash->name, "N25Q512") ) {
 		//ret = enable_quad_micron(my_spi_flash, quad_addr, quad_data);

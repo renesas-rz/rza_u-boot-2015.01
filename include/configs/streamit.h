@@ -19,6 +19,9 @@
 #define CONFIG_BOARD_EARLY_INIT_F
 #define CONFIG_SYS_GENERIC_BOARD
 
+/* Uncomment if using V2 or later revision of Stream It! */
+#define CONFIG_STREAMIT_V2
+
 #define CONFIG_CMD_NET
 #define CONFIG_CMD_MII
 #define CONFIG_CMD_PING
@@ -146,6 +149,7 @@
 /* Spi-Flash configuration */
 #define CONFIG_RZ_SPI
 #define CONFIG_SPI_FLASH
+#define CONFIG_SPI_FLASH_MACRONIX
 #define CONFIG_SPI_FLASH_SPANSION
 #define CONFIG_RZA1_BASE_QSPI0		0x3FEFA000
 #define CONFIG_SPI_FLASH_BAR		/* For SPI Flash bigger than 16MB */
@@ -161,7 +165,7 @@
 #define CONFIG_SYS_I2C_EEPROM_ADDR_LEN	1
 #define CONFIG_SYS_EEPROM_PAGE_WRITE_BITS	4	/* 16-Byte Write Mode */
 #define CONFIG_SYS_EEPROM_PAGE_WRITE_DELAY_MS	10	/* 10ms of delay */
-#define CONFIG_SYS_I2C_MODULE		3
+#define CONFIG_SYS_I2C_MODULE		0
 #define CONFIG_SH_I2C_BASE0		0xFCFEE000
 #define CONFIG_SH_I2C_BASE1		0xFCFEE400
 #define CONFIG_SH_I2C_BASE2		0xFCFEE800
