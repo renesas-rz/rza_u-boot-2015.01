@@ -1272,3 +1272,69 @@ U_BOOT_CMD(
 	"Change QSPI XIP Mode", qspi_help_text
 );
 
+
+/* Change I/O mux */
+static char io_mux_help_text[] =
+	"Change the I/O Multiplexers by changing the output of I2C Port Expander 2.\n"
+	"Usage: io_mux [a|b|c|d]\n"
+	"\t   a: PX1_EN0=L: P10/P11 = LCD(CN44)\n"
+	"\t   b: PX1_EN0=H: P10/P11 = CEU(CN41) and RSPI-1(CN25,CN26)\n"
+	"\n"
+	"\t   c: PX1_EN1=L: P2/P3 = IO(JA1), RSPI-4(CN15), SIM(CN4)\n"
+	"\t   d: PX1_EN1=H: P2/P3 = Ethernet\n"
+	"\n"
+	"\tCurrent PX1_EN0 = #\n"
+	"\t        PX1_EN1 = #\n";
+int do_io_mux(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
+{
+	u8 value;
+
+	/* PORT EXPANDER 2 (IC35) on I2C bus 3 */
+#define INPUT_PORT_REG 0
+#define OUTPUT_PORT_REG 1
+#define POLARITY_INV_REG 2
+#define CONFIG_REG 3
+
+	/* read current value of output register */
+	i2c_set_bus_num(3);
+	i2c_read(0x21, OUTPUT_PORT_REG, 1, &value, sizeof(value));
+
+	/* need at least two arguments */
+	if (argc <= 1) {
+
+		/* replace the curent values in the help text */
+		io_mux_help_text[sizeof(io_mux_help_text) - 24] = value & 1?'H':'L';
+		io_mux_help_text[sizeof(io_mux_help_text) - 3] = value & 2?'H':'L';
+		goto usage;
+	}
+
+	if( argv[1][0] == 'a' ) {
+		value &= ~1;
+	}
+	else if( argv[1][0] == 'b' ) {
+		value |= 1;
+	}
+	else if( argv[1][0] == 'c' ) {
+		value &= ~2;
+	}
+	else if( argv[1][0] == 'd' ) {
+		value |= 2;
+	}
+	else {
+		printf("Invalid option\n");
+		goto usage;
+	}
+
+	/* write new value to output register */
+	i2c_write(0x21, OUTPUT_PORT_REG, 1, &value, sizeof(value)); /* output */
+
+	return 0;
+
+usage:
+	return CMD_RET_USAGE;
+}
+U_BOOT_CMD(
+	io_mux,	CONFIG_SYS_MAXARGS, 1, do_io_mux,
+	"Change io mux", io_mux_help_text
+);
+
