@@ -315,14 +315,22 @@ int board_early_init_f(void)
 	#define CS2BCR_D	0x00004C00	/* Type=SDRAM, 16-bit memory */
 	#define CS2WCR_D	0x00000480	/* CAS Latency = 2 */
 	#define CS3BCR_D	0x00004C00	/* Type=SDRAM, 16-bit memory */
+	//#define CS3WCR_D	0x00004492	/*  */
 	#define CS3WCR_D	2 << 13	|	/* (CS2,CS3) WTRP (2 cycles) */\
 				1 << 10 |	/* (CS2,CS3) WTRCD (1 cycle) */\
 				1 <<  7 |	/*     (CS3) A3CL (CAS Latency = 2) */\
 				2 <<  3 |	/* (CS2,CS3) TRWL (2 cycles) */\
 				2 <<  0		/* (CS2,CS3) WTRC (5 cycles) */
 	#define SDCR_D		0x00110811	/* 13-bit row, 9-bit col, auto-refresh */
-	#define RTCOR_D		0xA55A0080
-	#define RTCSR_D		0xA55A0008
+
+	/*
+	 * You must refresh all rows within the amount of time specified in the memory spec.
+	 * Total Refresh time =  [Number_of_rows] / [Clock_Source / Refresh Counter]
+	 * 63.0ms =  [8192] /  [(66.6MHz / 4) / 128]
+	 */
+	#define RTCOR_D		0xA55A0080	/* Refresh Counter = 128 */
+	#define RTCSR_D		0xA55A0008	/* Clock Source=CKIO/4 (CKIO=66MHz) */
+
 	*(u32 *)CS2BCR = CS2BCR_D;
 	*(u32 *)CS2WCR = CS2WCR_D;
 	*(u32 *)CS3BCR = CS3BCR_D;
