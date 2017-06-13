@@ -19,8 +19,34 @@
 #define CONFIG_BOARD_EARLY_INIT_F
 #define CONFIG_SYS_GENERIC_BOARD
 
-/* Uncomment if using V2 or later revision of Stream It! */
-#define CONFIG_STREAMIT_V2
+/**********************************************************************
+ * SDRAM Selection
+ *
+ * Select what external SDRAM (if any) you have on the board by removing
+ * the comments around the correct #define statement.
+ * Note that Stream it V2 boards come populated with 32MByte SDRAM.
+ **********************************************************************/
+
+/* Winbond 256Mb (32MByte) SDRAM: Part number W9825G6KH-6I
+ *  [ Stream it V2 boards ] */
+/* #define SDRAM_W9825G6KH_6I */
+
+/* ISSI 128Mb (16MByte) SDRAM: Part number IS42/45S16800F
+ *   Requires pin lift and jumper wire */
+/* #define SDRAM_IS42_45S16800F */
+
+/* No SDRAM populated, just use the internal 3MB RAM */
+/* #define SDRAM_NONE */
+
+
+/* Print error and stop build if no selection has been made */
+#ifndef SDRAM_W9825G6KH_6I
+ #ifndef SDRAM_IS42_45S16800F
+  #ifndef SDRAM_NONE
+    #error "Please make your SDRAM selection in file streamit.h"
+  #endif
+ #endif
+#endif
 
 #define CONFIG_CMD_NET
 #define CONFIG_CMD_MII
@@ -116,7 +142,7 @@
           so an initial stack has to be set up first, meaning you
           can't have your init stack in SDRAM before the SDRAM is setup.
 	  Therfore, we need to use internal RAM for init stack.
-          Later on in boot, it will automatically switch the stack to 
+          Later on in boot, it will automatically switch the stack to
           SDRAM. */
  #define CONFIG_SYS_INIT_SP_ADDR         0x20300000 /* Internal RAM @ 3MB */
 #endif

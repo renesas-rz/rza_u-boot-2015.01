@@ -1,7 +1,7 @@
 /*
  * Copyright (C) 2017 Renesas Electonics America
  * Copyright (C) 2017 Chris Brandt
- * 
+ *
  * This file is released under the terms of GPL v2 and any later version.
  * See the file COPYING in the root directory of the source tree for details.
  */
@@ -190,7 +190,7 @@ void clock_enable(int clock, int enable)
 	u32 address = STBCR1 - 4;
 
 	if (clock == CLK_ALL) {
-		
+
 	} else
 	{
 		address += offset * 4;
@@ -228,8 +228,9 @@ int board_early_init_f(void)
 	   to RAM (hence the '_f' in the function name stands for 'still running from
 	   flash'). A temporary stack has been set up for us which is why we can
 	   have this as C code. */
-
+#ifndef SDRAM_NONE
 	int i;
+#endif
 
 	rtc_reset();	/* to start rtc */
 
@@ -281,6 +282,8 @@ int board_early_init_f(void)
 	pfc_set_gpio(2, 7, GPIO_OUT); /* P2_7 = GPIO_OUT */
 	gpio_set(2, 7, 1);
 
+#ifndef SDRAM_NONE /* If no SDRAM, skip this entire secton */
+
 	/* SDRAM */
 	pfc_set_pin_function(2, 0, ALT1, 0, 0);	/* P2_0 = CS3 */
 	for(i=0;i<=15;i++)
@@ -291,10 +294,11 @@ int board_early_init_f(void)
 	pfc_set_pin_function(2, 6, ALT1, 0, 0);	/* P2_6 = RD/WR */
 	pfc_set_pin_function(2, 4, ALT1, 0, 0);	/* P2_4 = WE0/DQMLL */
 	pfc_set_pin_function(2, 5, ALT1, 0, 0);	/* P2_5 = WE1/DQMLU */
-#ifdef CONFIG_STREAMIT_V2
+#ifdef SDRAM_W9825G6KH_6I
 	for(i=0;i<=14;i++)
 		pfc_set_pin_function(3, i, ALT1, 0, 0);	/* P3_0~14: A1-A15 */
-#else
+#endif
+#ifdef SDRAM_IS42_45S16800F
 	for(i=0;i<=13;i++)
 		pfc_set_pin_function(3, i, ALT1, 0, 0);	/* P3_0~13: A1-A14 */
 #endif
@@ -322,9 +326,8 @@ int board_early_init_f(void)
 //	#define CS2WCR_D	0x00000480	/* CAS Latency = 2 */
 	#define CS3BCR_D	0x00004C00	/* Type=SDRAM, 16-bit memory */
 
-#ifndef CONFIG_STREAMIT_V2
-	/* StreamIt V1:
-	 *   ISSI 128Mb SYNCHRONOUS DRAM (16MByte)
+#ifdef SDRAM_IS42_45S16800F
+	/* ISSI 128Mb SYNCHRONOUS DRAM (16MByte)
 	 *   IS42/45S16800F
 	 *   2M x 16 x 4 Banks
 	 */
@@ -334,9 +337,11 @@ int board_early_init_f(void)
 				2 <<  3 |	/* (CS2,CS3) TRWL (2 cycles) */\
 				3 <<  0		/* (CS2,CS3) WTRC (8 cycles) */
 	#define SDCR_D	0x00090809	/* 12-bit row, 9-bit col, auto-refresh */
-#else
-	/* StreamIt V2:
-	 *   winbond 256Mb SYNCHRONOUS DRAM (32MByte)
+#endif
+
+#ifdef SDRAM_W9825G6KH_6I
+	/*
+	 *   Winbond 256Mb SYNCHRONOUS DRAM (32MByte)
 	 *   W9825G6KH-6I
 	 *   4M x 16 x 4 Banks
 	 */
@@ -356,8 +361,8 @@ int board_early_init_f(void)
 	#define RTCOR_D		0xA55A0080	/* Refresh Counter = 128 */
 	#define RTCSR_D		0xA55A0008	/* Clock Source=CKIO/4 (CKIO=66MHz) */
 
-//	*(u32 *)CS2BCR = CS2BCR_D;
-//	*(u32 *)CS2WCR = CS2WCR_D;
+	//*(u32 *)CS2BCR = CS2BCR_D;
+	//*(u32 *)CS2WCR = CS2WCR_D;
 	*(u32 *)CS3BCR = CS3BCR_D;
 	*(u32 *)CS3WCR = CS3WCR_D;
 	*(u32 *)SDCR = SDCR_D;
@@ -378,14 +383,17 @@ int board_early_init_f(void)
 	 *   CAS Latency = 2 or 3 (see table 8.15)
 	 *   Write Burst Mode = [burst read/single write] or [burst read/burst write] (see table 8.15)
 	 */
-//	#define SDRAM_MODE_CS2 0x3FFFD040	/* CS2: CAS=2, burst write, 16bit bus */
-#ifndef CONFIG_STREAMIT_V2
+#ifdef SDRAM_IS42_45S16800F
 	#define SDRAM_MODE_CS3  0x3FFFE040	/* CS3: CAS=2, burst write, 16bit bus */
-#else
+#endif
+#ifdef SDRAM_W9825G6KH_6I
 	#define SDRAM_MODE_CS3  0x3FFFE060	/* CS3: CAS=3, burst write, 16bit bus */
 #endif
-//	*(u32 *)SDRAM_MODE_CS2 = 0;
+	//*(u32 *)SDRAM_MODE_CS2 = 0;
 	*(u32 *)SDRAM_MODE_CS3 = 0;
+
+
+#endif /* SDRAM_NONE */
 
 	return 0;
 }
@@ -418,18 +426,25 @@ int board_late_init(void)
 	printf(	"\t\trootfs:  0x%08X 0x%06X 0\n", 0x800000, 0x2000000-0x400000);
 #endif
 
+#ifndef SDRAM_NONE
 	/* Boot uImage in external SDRAM */
 	/* Rootfs is a squashfs image in memory mapped QSPI */
 	/* => run s_boot */
 	setenv("s1", "sf probe 0; sf read 0C800000 C0000 8000"); // Read out DT blob
 	setenv("s2", "sf probe 0; sf read 0CC00000 100000 500000"); //Copy Kernel to SDRAM
+#ifdef SDRAM_W9825G6KH_6I
+	setenv("s3", "bootm start 0x0CC00000 - 0x0C800000 ; bootm loados ;"\
+			"fdt memory 0x0C000000 0x02000000"); // Change memory address in DTB (32MB)
+#else
 	setenv("s3", "bootm start 0x0CC00000 - 0x0C800000 ; bootm loados ;"\
 			"fdt memory 0x0C000000 0x01000000"); // Change memory address in DTB (16MB)
+#endif
 	setenv("s4", "qspi single"); // Change XIP interface to single QSPI
 	setenv("sargs", "console=ttySC2,115200 ignore_loglevel root=/dev/mtdblock0"); // bootargs
 	setenv("s_boot", "run s1 s2 s3 s4; setenv bootargs ${sargs}; fdt chosen; bootm go"); // run the commands
+#endif
 
-	/* Boot XIP using internal RAM */
+	/* Boot XIP using internal RAM only */
 	/* Rootfs is a AXFS image in memory mapped QSPI */
 	/* => run xa_boot */
 	/* Read out DT blob */
@@ -441,17 +456,23 @@ int board_late_init(void)
 	setenv("xaargs", "console=ttySC2,115200 ignore_loglevel root=/dev/null rootflags=physaddr=0x18800000"); // bootargs
 	setenv("xa_boot", "run xa1 xa2 xa3; setenv bootargs ${xaargs}; fdt chosen; bootx 18200000 20200000"); // run the commands
 
+#ifndef SDRAM_NONE
 	/* Boot XIP using external SDRAM RAM */
 	/* Rootfs is a AXFS image in memory mapped QSPI */
 	/* => run xsa_boot */
 	/* Read out DT blob */
 	setenv("xsa1", "sf probe 0; sf read 0C800000 C0000 8000");
 	/* Change memory address in DTB */
+#ifdef SDRAM_W9825G6KH_6I
+	setenv("xsa2", "fdt addr 0C800000 ; fdt memory 0x0C000000 0x02000000"); /* 32MB SDRAM RAM */
+#else
 	setenv("xsa2", "fdt addr 0C800000 ; fdt memory 0x0C000000 0x01000000"); /* 16MB SDRAM RAM */
+#endif
 	/* Change XIP interface to single QSPI */
 	setenv("xsa3", "qspi single");
 	setenv("xsaargs", "console=ttySC3,115200 ignore_loglevel earlyprintk root=/dev/null rootflags=physaddr=0x18800000"); // bootargs
 	setenv("xsa_boot", "run xsa1 xsa2 xsa3; setenv bootargs ${xsaargs}; fdt chosen; bootx 18200000 0C800000"); // run the commands
+#endif
 
 	return 0;
 }
@@ -828,16 +849,10 @@ int qspi_reset_device(struct spi_flash *sf)
 
 	if( !strcmp(sf->name, "S25FL512S_256K") ) {
 		/* Don't really need to do anything */
-#ifdef CONFIG_STREAMIT_V2
-		printf("\nERROR: Stream It V1 board detected! Update #define in streamit.h\n\n");
-#endif
 	}
 	else if( !strcmp(sf->name, "MX25L51235F") ) {
 	        /* Macronix and Windbond are similar to Spansion */
 		/* Don't really need to do anything */
-#ifndef CONFIG_STREAMIT_V2
-		printf("\nERROR: Stream It V2 board detected! Update #define in streamit.h\n\n");
-#endif
 	}
 	else if( !strcmp(sf->name, "N25Q512") ) {
 		//ret = remove_dummy_micron(sf);
