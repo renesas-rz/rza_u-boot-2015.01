@@ -440,7 +440,7 @@ int board_late_init(void)
 			"fdt memory 0x0C000000 0x01000000"); // Change memory address in DTB (16MB)
 #endif
 	setenv("s4", "qspi single"); // Change XIP interface to single QSPI
-	setenv("sargs", "console=ttySC2,115200 ignore_loglevel root=/dev/mtdblock0"); // bootargs
+	setenv("sargs", "console=ttySC3,115200 ignore_loglevel root=/dev/mtdblock0"); // bootargs
 	setenv("s_boot", "run s1 s2 s3 s4; setenv bootargs ${sargs}; fdt chosen; bootm go"); // run the commands
 #endif
 
@@ -453,7 +453,7 @@ int board_late_init(void)
 	setenv("xa2", "fdt addr 20200000 ; fdt memory 0x20000000 0x00300000"); /* 3MB RAM */
 	/* Change XIP interface to single QSPI */
 	setenv("xa3", "qspi single");
-	setenv("xaargs", "console=ttySC2,115200 ignore_loglevel root=/dev/null rootflags=physaddr=0x18800000"); // bootargs
+	setenv("xaargs", "console=ttySC3,115200 ignore_loglevel root=/dev/null rootflags=physaddr=0x18800000"); // bootargs
 	setenv("xa_boot", "run xa1 xa2 xa3; setenv bootargs ${xaargs}; fdt chosen; bootx 18200000 20200000"); // run the commands
 
 #ifndef SDRAM_NONE
