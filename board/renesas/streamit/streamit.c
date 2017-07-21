@@ -389,8 +389,8 @@ int board_early_init_f(void)
 #ifdef SDRAM_W9825G6KH_6I
 	#define SDRAM_MODE_CS3  0x3FFFE060	/* CS3: CAS=3, burst write, 16bit bus */
 #endif
-	//*(u32 *)SDRAM_MODE_CS2 = 0;
-	*(u32 *)SDRAM_MODE_CS3 = 0;
+	//*(u16 *)SDRAM_MODE_CS2 = 0;
+	*(u16 *)SDRAM_MODE_CS3 = 0;
 
 
 #endif /* SDRAM_NONE */

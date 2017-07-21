@@ -355,8 +355,8 @@ int board_early_init_f(void)
 	 */
 	#define SDRAM_MODE_CS2 0x3FFFD040	/* CS2: CAS=2, burst write, 16bit bus */
 	#define SDRAM_MODE_CS3 0x3FFFE040	/* CS3: CAS=2, burst write, 16bit bus */
-	*(u32 *)SDRAM_MODE_CS2 = 0;
-	*(u32 *)SDRAM_MODE_CS3 = 0;
+	*(u16 *)SDRAM_MODE_CS2 = 0;
+	*(u16 *)SDRAM_MODE_CS3 = 0;
 
 	return 0;
 }
