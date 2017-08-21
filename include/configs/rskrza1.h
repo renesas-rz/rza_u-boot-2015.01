@@ -201,6 +201,14 @@
 #define CONFIG_R8A66597_XTAL		0x0000	/* 48MHz */
 #define CONFIG_R8A66597_ENDIAN		0x0000	/* little */
 
+/* SH-MMC */
+#define CONFIG_MMC			1
+#define CONFIG_CMD_MMC
+#define CONFIG_GENERIC_MMC		1
+#define CONFIG_SH_MMCIF			1
+#define CONFIG_SH_MMCIF_ADDR		0xE804C800
+#define CONFIG_SH_MMCIF_CLK CONFIG_SYS_CLK_FREQ
+
 /*
  * Lowlevel configuration
  */

@@ -19,6 +19,7 @@
 
 #include <spi.h>
 #include <spi_flash.h>
+#include <asm/arch-rmobile/mmc.h>
 
 /* This function temporary disables the feature of OR-ing the results of
    commands together when using dual spi flash memory. When using single
@@ -247,6 +248,19 @@ int board_early_init_f(void)
 	pfc_set_pin_function(2, 11, ALT2, 0, 0); /* P2_11 = ET_RXD3 */
 	//pfc_set_pin_function(4, 14, ALT8, 0, 0); /* P4_14 = IRQ6 (ET_IRQ) */ /* NOTE: u-boot doesn't enable interrupts */
 
+	/* MMC */
+	pfc_set_pin_function(3, 8, ALT8, 0, 0);		/* MMC CD */
+	pfc_set_pin_function(3, 10, ALT8, 0, 1);	/* MMC DAT1 (bi dir) */
+	pfc_set_pin_function(3, 11, ALT8, 0, 1);	/* MMC DAT0 (bi dir) */
+	pfc_set_pin_function(3, 12, ALT8, 0, 0);	/* MMC CLK */
+	pfc_set_pin_function(3, 13, ALT8, 0, 1);	/* MMC CMD (bi dir) */
+	pfc_set_pin_function(3, 14, ALT8, 0, 1);	/* MMC DAT3 (bi dir) */
+	pfc_set_pin_function(3, 15, ALT8, 0, 1);	/* MMC DAT2 (bi dir)*/
+	pfc_set_pin_function(4, 0, ALT8, 0, 1);		/* MMC DAT4 (bi dir)*/
+	pfc_set_pin_function(4, 1, ALT8, 0, 1);		/* MMC DAT5 (bi dir) */
+	pfc_set_pin_function(4, 2, ALT8, 0, 1);		/* MMC DAT6 (bi dir) */
+	pfc_set_pin_function(4, 3, ALT8, 0, 1);		/* MMC DAT7 (bi dir) */
+
 	/* SDRAM */
 	pfc_set_pin_function(5, 8, ALT6, 0, 0);	/* P5_8 = CS2 */
 	for(i=0;i<=15;i++)
@@ -473,6 +487,17 @@ int board_late_init(void)
 
 	return 0;
 }
+
+#ifdef CONFIG_SH_MMCIF
+int board_mmc_init(bd_t *bis)
+{
+	int ret = 0;
+
+	ret = mmcif_mmc_init();
+
+	return ret;
+}
+#endif
 
 int dram_init(void)
 {

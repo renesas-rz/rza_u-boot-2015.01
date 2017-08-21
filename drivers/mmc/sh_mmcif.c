@@ -576,8 +576,12 @@ static const struct mmc_ops sh_mmcif_ops = {
 static struct mmc_config sh_mmcif_cfg = {
 	.name		= DRIVER_NAME,
 	.ops		= &sh_mmcif_ops,
+#ifndef CONFIG_CPU_RZA1
 	.host_caps	= MMC_MODE_HS | MMC_MODE_HS_52MHz | MMC_MODE_4BIT |
 			  MMC_MODE_8BIT | MMC_MODE_HC,
+#else
+	.host_caps	= MMC_MODE_4BIT | MMC_MODE_8BIT,
+#endif
 	.voltages	= MMC_VDD_32_33 | MMC_VDD_33_34,
 	.b_max		= CONFIG_SYS_MMC_MAX_BLK_COUNT,
 };
