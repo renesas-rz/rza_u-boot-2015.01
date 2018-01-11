@@ -33,6 +33,10 @@
 #define OST_MAX_COUNTER (0xFFFFFFFF)
 #define OST_TIMER_RESET (0xFFFFFFFF)
 
+/* 33.333MHz */
+#define P0_CLOCK_FREQUENCY_KHZ  (33.333 * 1000)
+#define MAX_CYCLE_msec          (0xFFFFFFFF / P0_CLOCK_FREQUENCY_KHZ)
+
 static vu_long ost0_timer;
 
 static void ost_timer_start(unsigned int timer)
@@ -54,7 +58,8 @@ int timer_init(void)
 
 	/* User Device 0 only */
 	ost_timer_stop(0);
-	writel(OST_TIMER_RESET, OSTM0CMP);
+	//writel(OST_TIMER_RESET, OSTM0CMP);
+	writel(P0_CLOCK_FREQUENCY_KHZ, OSTM0CMP);
 	ost_timer_start(0);
 
 	return 0;
@@ -94,6 +99,14 @@ ulong get_timer(ulong base)
 		return now - base;
 	else
 		return ((timecnt + 1) - base) + now;
+}
+
+void __mdelay(unsigned long msec)
+{
+	unsigned long end = (get_usec() / 1000) + msec;
+
+	while ( (get_usec() / 1000) < end)
+		continue;
 }
 
 void __udelay(unsigned long usec)
